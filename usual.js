@@ -103,12 +103,12 @@ async function borrarUno(id) {
 
 async function borrarTodo() {
     if (confirm("🚨 ¡ADVERTENCIA! Se borrará toda la base de datos de Darwin.")) {
-        
+
         const URL_BORRAR = API_URL.replace("/entrenadores", "/eliminar-todo");
 
         try {
-            const respuesta = await fetch(URL_BORRAR, { 
-                method: 'DELETE' 
+            const respuesta = await fetch(URL_BORRAR, {
+                method: 'DELETE'
             });
 
             if (respuesta.ok) {
