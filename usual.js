@@ -40,12 +40,21 @@ async function iniciarSesion() {
 }
 
 function cerrarSesion() {
+    // 1. Preguntamos primero. Si el usuario dice "Cancelar" (false), detenemos la función con el "return"
+    if (!confirm("¿Estás seguro de que quieres cerrar tu sesión y salir del gimnasio?")) {
+        return;
+    }
+
+    // 2. Si dice "Aceptar", el código continúa y cerramos todo
     localStorage.removeItem("tokenVIP");
     document.getElementById("login-section").style.display = "block";
     document.getElementById("gym-section").style.display = "none";
     document.getElementById("header-actions").style.display = "none";
 
-    // Limpiamos los inputs
+    // Ocultar también el panel de Dios por si acaso
+    document.getElementById("admin-panel").style.display = "none";
+
+    // Limpiamos la contraseña para que no quede guardada visualmente
     document.getElementById("login-password").value = "";
 }
 
