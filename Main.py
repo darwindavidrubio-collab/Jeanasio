@@ -3,9 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from passlib.context import CryptContext
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Actualizado para Python 3.14
 from jose import JWTError, jwt
 import bcrypt
 
@@ -14,16 +13,17 @@ import models
 from database import SessionLocal, engine
 
 # 1. CREACIÓN DE LA BASE DE DATOS
+# Se asegura de leer los modelos antes de crear las tablas
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# 2. CONFIGURACIÓN DE SEGURIDAD VIP (NUEVO)
-SECRET_KEY = "llave_maestra_hiper_secreta_del_gimnasio" # Sello del guardia
+# 2. CONFIGURACIÓN DE SEGURIDAD VIP
+SECRET_KEY = "llave_maestra_hiper_secreta_del_gimnasio" 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30 # El pase dura 30 minutos
+ACCESS_TOKEN_EXPIRE_MINUTES = 30 
 
-# Le decimos a FastAPI dónde está la puerta para pedir el pase
+# La puerta para pedir el pase
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 app.add_middleware(
@@ -65,7 +65,8 @@ def verificar_password(password_plana, password_triturada):
 # --- FABRICANTE DE PASES VIP ---
 def crear_token_acceso(data: dict):
     a_codificar = data.copy()
-    expira = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # En Python 3.14 se usa timezone.utc en lugar de utcnow()
+    expira = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     a_codificar.update({"exp": expira})
     token_jwt = jwt.encode(a_codificar, SECRET_KEY, algorithm=ALGORITHM)
     return token_jwt
@@ -73,7 +74,6 @@ def crear_token_acceso(data: dict):
 # --- EL INSPECTOR DE PASES VIP ---
 def obtener_usuario_actual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
-        # Intentamos leer el pase
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
@@ -81,10 +81,9 @@ def obtener_usuario_actual(token: str = Depends(oauth2_scheme), db: Session = De
     except JWTError:
         raise HTTPException(status_code=401, detail="Pase VIP expirado o falso")
     
-    # Verificamos que el usuario aún exista
     usuario = db.query(models.UsuarioDB).filter(models.UsuarioDB.username == username).first()
     if usuario is None:
-        raise HTTPException(status_code=401, detail="El usuario del pase ya no existe")
+        raise HTTPException(status_code=401, detail="El usuario ya no existe")
     return usuario
 
 
@@ -93,7 +92,7 @@ def obtener_usuario_actual(token: str = Depends(oauth2_scheme), db: Session = De
 def registrar_usuario(usuario: UsuarioCrear, db: Session = Depends(get_db)):
     usuario_existente = db.query(models.UsuarioDB).filter(models.UsuarioDB.username == usuario.username).first()
     if usuario_existente:
-        raise HTTPException(status_code=400, detail="Ese nombre de usuario ya está ocupado.")
+        raise HTTPException(status_code=400, detail="Nombre ocupado.")
 
     password_triturada = obtener_password_encriptada(usuario.password)
     nuevo_usuario = models.UsuarioDB(username=usuario.username, hashed_password=password_triturada)
@@ -102,32 +101,26 @@ def registrar_usuario(usuario: UsuarioCrear, db: Session = Depends(get_db)):
     db.commit()
     return {"mensaje": f"¡Usuario {usuario.username} registrado!"}
 
-# --- LA NUEVA PUERTA DE LOGIN OFICIAL ---
 @app.post("/login")
 def iniciar_sesion(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Buscamos al usuario
     db_usuario = db.query(models.UsuarioDB).filter(models.UsuarioDB.username == form_data.username).first()
     
-    # Comparamos contraseñas
     if not db_usuario or not verificar_password(form_data.password, db_usuario.hashed_password):
         raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
         
-    # Fabricamos el Pase VIP
     token_real = crear_token_acceso(data={"sub": db_usuario.username})
     return {"access_token": token_real, "token_type": "bearer"}
 
 
-# 6. RUTAS DEL GIMNASIO (¡AHORA PROTEGIDAS!)
+# 6. RUTAS DEL GIMNASIO PROTEGIDAS
 @app.get("/")
 def inicio():
     return {"mensaje": "API Segura Activa"}
 
-# Ver entrenadores es público (Cualquiera puede mirar)
 @app.get("/entrenadores")
 def ver_todos(db: Session = Depends(get_db)):
     return db.query(models.EntrenadorDB).all()
 
-# ¡Crear, actualizar y borrar ahora requieren el PASE VIP!
 @app.post("/entrenadores")
 def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     nuevo_entrenador = models.EntrenadorDB(
@@ -143,6 +136,11 @@ def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db)
 @app.put("/entrenadores/{entrenador_id}")
 def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     db_entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
+    
+    # Parche de seguridad: Si no existe el ID, avisamos en lugar de crashear
+    if not db_entrenador:
+        raise HTTPException(status_code=404, detail="Entrenador no encontrado")
+
     db_entrenador.nombre = entrenador.nombre
     db_entrenador.ciudad = entrenador.ciudad
     db_entrenador.medalla = entrenador.medalla
@@ -154,6 +152,10 @@ def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: 
 @app.delete("/entrenadores/{entrenador_id}")
 def eliminar_entrenador_por_ID(entrenador_id: int, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
+    
+    if not entrenador:
+        raise HTTPException(status_code=404, detail="No existe ese ID")
+
     db.delete(entrenador)
     db.commit()
     return {"mensaje": "Entrenador eliminado"}
@@ -163,3 +165,4 @@ def eliminar_todos_entrenadores(db: Session = Depends(get_db), usuario_actual: m
     db.query(models.EntrenadorDB).delete()
     db.commit()
     return {"mensaje": "¡Limpieza total!"}
+     
