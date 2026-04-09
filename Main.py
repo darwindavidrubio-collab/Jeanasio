@@ -165,4 +165,60 @@ def eliminar_todos_entrenadores(db: Session = Depends(get_db), usuario_actual: m
     db.query(models.EntrenadorDB).delete()
     db.commit()
     return {"mensaje": "¡Limpieza total!"}
+
+
+# =================================================================
+# 7. LA BÓVEDA SECRETA (PANEL DE DIOS - SOLO PARA DARWIN)
+# =================================================================
+
+class NuevaPasswordSchema(BaseModel):
+    nueva_password: str
+
+# El guardia personal de Darwin
+def verificar_super_admin(usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
+    # Reemplaza "darwin_admin" con tu usuario maestro real
+    if usuario_actual.username != "darwin_admin": 
+        raise HTTPException(status_code=403, detail="¡Alerta de intruso! Solo Darwin tiene este poder.")
+    return usuario_actual
+
+
+# 👁️ Ver todos los usuarios (Sin contraseñas por seguridad)
+@app.get("/usuarios-panel")
+def ver_todos_los_usuarios(db: Session = Depends(get_db), admin: models.UsuarioDB = Depends(verificar_super_admin)):
+    usuarios = db.query(models.UsuarioDB).all()
+    # Filtramos la respuesta para que el JSON no incluya los hashes de contraseñas
+    lista_segura = [{"id": u.id, "username": u.username} for u in usuarios]
+    return lista_segura
+
+
+# 🗑️ Eliminar un usuario del sistema
+@app.delete("/usuarios-panel/{usuario_id}")
+def eliminar_usuario_del_sistema(usuario_id: int, db: Session = Depends(get_db), admin: models.UsuarioDB = Depends(verificar_super_admin)):
+    usuario_a_borrar = db.query(models.UsuarioDB).filter(models.UsuarioDB.id == usuario_id).first()
+    
+    if not usuario_a_borrar:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    if usuario_a_borrar.username == admin.username:
+        raise HTTPException(status_code=400, detail="¡No puedes borrarte a ti mismo, Jefe!")
+
+    db.delete(usuario_a_borrar)
+    db.commit()
+    return {"mensaje": f"El usuario {usuario_a_borrar.username} ha sido expulsado del sistema."}
+
+
+# 🔑 Resetear/Editar la contraseña de alguien
+@app.put("/usuarios-panel/{usuario_id}/password")
+def cambiar_password_usuario(usuario_id: int, datos: NuevaPasswordSchema, db: Session = Depends(get_db), admin: models.UsuarioDB = Depends(verificar_super_admin)):
+    usuario_a_editar = db.query(models.UsuarioDB).filter(models.UsuarioDB.id == usuario_id).first()
+    
+    if not usuario_a_editar:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Encriptamos la nueva contraseña antes de guardarla
+    nueva_password_triturada = obtener_password_encriptada(datos.nueva_password)
+    usuario_a_editar.hashed_password = nueva_password_triturada
+    db.commit()
+    
+    return {"mensaje": f"La contraseña de {usuario_a_editar.username} ha sido actualizada con éxito."}    
      
