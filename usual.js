@@ -1,4 +1,4 @@
-const API_URL = "https://TU_URL_DE_RENDER.onrender.com";
+const API_URL = "https://jeanasio.onrender.com";
 
 // ==========================================
 // 1. SISTEMA DE SEGURIDAD VIP
