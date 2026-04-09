@@ -103,8 +103,24 @@ async function borrarUno(id) {
 
 async function borrarTodo() {
     if (confirm("🚨 ¡ADVERTENCIA! Se borrará toda la base de datos de Darwin.")) {
-        await fetch("http://127.0.0.1:8000/eliminar-todo", { method: 'DELETE' });
-        obtenerEntrenadores();
+        
+        const URL_BORRAR = API_URL.replace("/entrenadores", "/eliminar-todo");
+
+        try {
+            const respuesta = await fetch(URL_BORRAR, { 
+                method: 'DELETE' 
+            });
+
+            if (respuesta.ok) {
+                alert("🗑️ Base de datos borrada con éxito.");
+                obtenerEntrenadores();
+            } else {
+                alert("❌ Hubo un problema al borrar la base de datos.");
+            }
+        } catch (error) {
+            console.error("Error al borrar:", error);
+            alert("No se pudo conectar con el servidor para borrar.");
+        }
     }
 }
 
