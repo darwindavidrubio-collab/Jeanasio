@@ -1,127 +1,153 @@
-const API_URL = "https://jeanasio.onrender.com/entrenadores";
+const API_URL = "https://TU_URL_DE_RENDER.onrender.com";
 
-async function obtenerEntrenadores() {
-    const res = await fetch(API_URL);
-    const datos = await res.json();
-    const contenedor = document.getElementById('lista-entrenadores');
-    contenedor.innerHTML = "";
+// ==========================================
+// 1. SISTEMA DE SEGURIDAD VIP
+// ==========================================
 
-    datos.forEach(e => {
-        contenedor.innerHTML += `
-            <article>
-                <h3>👤 ${e.nombre}</h3>
-                <p style="color: var(--text-muted); margin: 5px 0;">
-                    📍 ${e.ciudad} | 🏅 ${e.medalla ? 'Condecorado' : 'Sin Medallas'}
-                </p>
-                <p>Poder Total: <strong style="color: var(--accent)">${e.poder_total}</strong></p>
-                <div style="margin-top: 15px;">
-                    <button class="btn btn-edit" onclick="editarEntrenador(${e.id}, '${e.nombre}', '${e.ciudad}', ${e.medalla})">Editar</button>
-                    <button class="btn btn-delete" onclick="borrarUno(${e.id})">Borrar</button>
+async function iniciarSesion() {
+    const user = document.getElementById("login-username").value;
+    const pass = document.getElementById("login-password").value;
+    const errorText = document.getElementById("login-error");
+
+    const formData = new URLSearchParams();
+    formData.append("username", user);
+    formData.append("password", pass);
+
+    try {
+        const respuesta = await fetch(`${API_URL}/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData
+        });
+
+        if (respuesta.ok) {
+            const datos = await respuesta.json();
+            localStorage.setItem("tokenVIP", datos.access_token); // Guardamos la llave
+
+            // Transición de pantalla
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("gym-section").style.display = "block";
+            document.getElementById("header-actions").style.display = "block";
+
+            errorText.innerText = "";
+            cargarEntrenadores(); // Cargamos los datos
+        } else {
+            errorText.innerText = "❌ Credenciales incorrectas.";
+        }
+    } catch (error) {
+        errorText.innerText = "❌ Error de servidor (Asegúrate de que Python esté corriendo).";
+    }
+}
+
+function cerrarSesion() {
+    localStorage.removeItem("tokenVIP");
+    document.getElementById("login-section").style.display = "block";
+    document.getElementById("gym-section").style.display = "none";
+    document.getElementById("header-actions").style.display = "none";
+
+    // Limpiamos los inputs
+    document.getElementById("login-password").value = "";
+}
+
+function obtenerHeadersVIP() {
+    return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("tokenVIP")}`
+    };
+}
+
+// ==========================================
+// 2. PANEL DE CONTROL (CRUD)
+// ==========================================
+
+async function cargarEntrenadores() {
+    const respuesta = await fetch(`${API_URL}/entrenadores`);
+    const entrenadores = await respuesta.json();
+
+    const lista = document.getElementById("lista-entrenadores");
+    lista.innerHTML = "";
+
+    if (entrenadores.length === 0) {
+        lista.innerHTML = "<p style='color: var(--text-muted); text-align: center;'>No hay entrenadores registrados aún.</p>";
+        return;
+    }
+
+    entrenadores.forEach(e => {
+        // Creamos la tarjeta usando tus estilos
+        lista.innerHTML += `
+        <article>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; color: var(--text-main);">${e.nombre}</h3>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">
+                        🌍 ${e.ciudad} | ${e.medalla ? "🏅 Campeón" : "🎒 Novato"} | ⚡ Poder: ${e.poder_total}
+                    </p>
                 </div>
-            </article>`;
+                <div>
+                    <button class="btn btn-delete" onclick="eliminarEntrenador(${e.id})">Borrar</button>
+                </div>
+            </div>
+        </article>`;
     });
 }
 
-async function guardarEntrenador() {
-    const nombre = document.getElementById('nombre').value;
-    const ciudad = document.getElementById('ciudad').value;
-    const medallaSeleccionada = document.querySelector('input[name="medalla_opt"]:checked').value;
-    const medalla = (medallaSeleccionada === "true");
+async function crearEntrenador() {
+    const nombre = document.getElementById("nombre").value;
+    const ciudad = document.getElementById("ciudad").value;
 
-    if (!nombre || !ciudad) return alert("Por favor, llena los campos.");
+    // Leemos el Radio Button que esté seleccionado
+    const medallaRadio = document.querySelector('input[name="medalla_opt"]:checked');
+    const medalla = medallaRadio ? (medallaRadio.value === "true") : false;
 
-    const respuesta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    if (!nombre || !ciudad) {
+        alert("Por favor completa el nombre y selecciona una ciudad.");
+        return;
+    }
+
+    const respuesta = await fetch(`${API_URL}/entrenadores`, {
+        method: "POST",
+        headers: obtenerHeadersVIP(),
         body: JSON.stringify({ nombre, ciudad, medalla })
     });
 
     if (respuesta.ok) {
-        obtenerEntrenadores();
-        limpiarCampos();
+        cargarEntrenadores();
+        document.getElementById("nombre").value = "";
+        document.getElementById("ciudad").value = "";
     } else {
-        const errorData = await respuesta.json();
-        alert("⚠️ Error: " + (errorData.detail || "Ese nombre ya existe."));
+        alert("🚨 No tienes permiso o la sesión expiró.");
+        cerrarSesion();
     }
 }
 
-async function editarEntrenador(id, n, c, m) {
-    document.getElementById('nombre').value = n;
-    document.getElementById('ciudad').value = c;
-    document.querySelector(`input[name="medalla_opt"][value="${m}"]`).checked = true;
+async function eliminarEntrenador(id) {
+    const respuesta = await fetch(`${API_URL}/entrenadores/${id}`, {
+        method: "DELETE",
+        headers: obtenerHeadersVIP()
+    });
 
-    const btnGuardar = document.querySelector('.btn-save');
-    btnGuardar.innerText = "Confirmar Edición 🔄";
-    btnGuardar.style.background = "#10b981";
-
-    btnGuardar.onclick = null;
-    btnGuardar.onclick = async function () {
-        const nuevoNombre = document.getElementById('nombre').value;
-        const nuevaCiudad = document.getElementById('ciudad').value;
-        const medallaSeleccionada = document.querySelector('input[name="medalla_opt"]:checked').value;
-        const nuevaMedalla = (medallaSeleccionada === "true");
-
-        if (!nuevoNombre || !nuevaCiudad) return alert("Campos vacíos");
-
-        try {
-            const res = await fetch(`${API_URL}/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre: nuevoNombre, ciudad: nuevaCiudad, medalla: nuevaMedalla })
-            });
-
-            if (res.ok) {
-                alert("✅ ¡Entrenador actualizado con éxito!");
-                btnGuardar.innerText = "Guardar Entrenador";
-                btnGuardar.style.background = "var(--accent)";
-                btnGuardar.onclick = guardarEntrenador;
-                obtenerEntrenadores();
-                limpiarCampos();
-            } else {
-                const err = await res.json();
-                alert("❌ Error al actualizar: " + (err.detail || "Datos inválidos"));
-            }
-        } catch (error) {
-            alert("El nombre ya se encuentra registrado. ❌");
-        }
-    };
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (respuesta.ok) cargarEntrenadores();
+    else alert("🚨 Error: Permiso denegado.");
 }
 
-function limpiarCampos() {
-    document.getElementById('nombre').value = "";
-    document.getElementById('ciudad').value = "";
-    document.querySelector('input[name="medalla_opt"][value="true"]').checked = true;
+async function eliminarTodos() {
+    if (!confirm("¿Estás seguro de que quieres borrar TODA la base de datos?")) return;
+
+    const respuesta = await fetch(`${API_URL}/eliminar-todo`, {
+        method: "DELETE",
+        headers: obtenerHeadersVIP()
+    });
+
+    if (respuesta.ok) cargarEntrenadores();
+    else alert("🚨 Error: Permiso denegado.");
 }
 
-async function borrarUno(id) {
-    if (confirm("¿Eliminar este registro?")) {
-        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-        obtenerEntrenadores();
+// Comprobar si ya estamos logueados al cargar la página
+window.onload = () => {
+    if (localStorage.getItem("tokenVIP")) {
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("gym-section").style.display = "block";
+        document.getElementById("header-actions").style.display = "block";
+        cargarEntrenadores();
     }
-}
-
-async function borrarTodo() {
-    if (confirm("🚨 ¡ADVERTENCIA! Se borrará toda la base de datos de Darwin.")) {
-
-        const URL_BORRAR = API_URL.replace("/entrenadores", "/eliminar-todo");
-
-        try {
-            const respuesta = await fetch(URL_BORRAR, {
-                method: 'DELETE'
-            });
-
-            if (respuesta.ok) {
-                alert("🗑️ Base de datos borrada con éxito.");
-                obtenerEntrenadores();
-            } else {
-                alert("❌ Hubo un problema al borrar la base de datos.");
-            }
-        } catch (error) {
-            console.error("Error al borrar:", error);
-            alert("No se pudo conectar con el servidor para borrar.");
-        }
-    }
-}
-
-obtenerEntrenadores();
+};

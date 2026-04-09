@@ -6,72 +6,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gimnasio Pokémon de Darwin</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="Imagenes/Pke.PNG" href="Imagenes/Pke.PNG">
+    <link rel="icon" type="image/png" href="Imagenes/Pke.PNG">
 </head>
 
 <body>
     <div class="container">
         <header>
             <h1>Jeanasio de Darwin y Otaku</h1>
-
             <div class="header-center">
                 <img src="Imagenes/Icono.png" alt="Escudo" class="Logo-escudo">
             </div>
-
-            <div class="header-right">
-                <button class="btn btn-delete-all" onclick="borrarTodo()">Borrar Todo</button>
+            <div class="header-right" id="header-actions" style="display: none; text-align: right;">
+                <button class="btn btn-delete-all" onclick="cerrarSesion()"
+                    style="color: white; border-color: var(--border);">Cerrar Sesión</button>
             </div>
         </header>
 
         <main>
-            <section aria-labelledby="form-title">
-                <h2 id="form-title">Registrar Entrenador</h2>
-                <!-- Nombre -->
+            <section id="login-section">
+                <h2>Acceso Restringido (VIP)</h2>
                 <div class="form-group">
-                    <label for="nombre">Nombre Completo</label>
-                    <input type="text" id="nombre" placeholder="Ej: Ash Ketchum">
+                    <label for="login-username">Usuario Administrador</label>
+                    <input type="text" id="login-username" placeholder="Ej: darwin_admin">
                 </div>
-
-                <!-- Ciudad -->
                 <div class="form-group">
-                    <label for="ciudad">Región o Ciudad</label>
-                    <select id="ciudad" class="select-moderno">
-                        <option value="" disabled selected>Selecciona una ciudad...</option>
-                        <option value="Pueblo Paleta">Pueblo Paleta</option>
-                        <option value="Ciudad Verde">Ciudad Verde</option>
-                        <option value="Ciudad Plateada">Ciudad Plateada</option>
-                        <option value="Ciudad Celeste">Ciudad Celeste</option>
-                    </select>
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="Tu clave secreta">
                 </div>
+                <button class="btn btn-save" onclick="iniciarSesion()">Desbloquear Gimnasio</button>
+                <p id="login-error" style="color: var(--danger); text-align: center; margin-top: 15px;"></p>
+            </section>
 
-                <!-- Medalla -->
-                <div class="form-group">
-                    <label>¿Posee Medalla de Gimnasio?</label>
-                    <div style="display: flex; gap: 20px; margin-top: 10px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="radio" name="medalla_opt" value="true" checked>
-                            <span>Sí, soy campeón</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="radio" name="medalla_opt" value="false">
-                            <span>No poseo medalla todavía</span>
-                        </label>
+            <div id="gym-section" style="display: none;">
+
+                <section>
+                    <h2>Registrar Entrenador</h2>
+                    <div class="form-group">
+                        <label for="nombre">Nombre Completo</label>
+                        <input type="text" id="nombre" placeholder="Ej: Ash Ketchum">
                     </div>
-                </div>
 
-                <button class="btn btn-save" onclick="guardarEntrenador()">Guardar Entrenador</button>
-            </section>
+                    <div class="form-group">
+                        <label for="ciudad">Región o Ciudad</label>
+                        <select id="ciudad" class="select-moderno">
+                            <option value="" disabled selected>Selecciona una ciudad...</option>
+                            <option value="Pueblo Paleta">Pueblo Paleta</option>
+                            <option value="Ciudad Verde">Ciudad Verde</option>
+                            <option value="Ciudad Plateada">Ciudad Plateada</option>
+                            <option value="Ciudad Celeste">Ciudad Celeste</option>
+                        </select>
+                    </div>
 
-            <!-- Lista de Entrenadores -->
-            <section aria-labelledby="list-title">
-                <h2 id="list-title">Entrenadores en la Base de Datos</h2>
-                <div id="lista-entrenadores">
-                </div>
-            </section>
+                    <div class="form-group">
+                        <label>¿Posee Medalla de Gimnasio?</label>
+                        <div style="display: flex; gap: 20px; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="medalla_opt" value="true" checked>
+                                <span>Sí, soy campeón</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="medalla_opt" value="false">
+                                <span>No poseo medalla todavía</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-save" onclick="crearEntrenador()">Guardar Entrenador</button>
+                </section>
+
+                <section>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>Base de Datos</h2>
+                        <button class="btn btn-delete-all" onclick="eliminarTodos()">Borrar Todo</button>
+                    </div>
+                    <div id="lista-entrenadores"></div>
+                </section>
+            </div>
         </main>
 
         <footer>
-            <p>&copy; 2026 - Darwin - Panel de Control Pokémon</p>
+            <p>&copy; 2026 - Darwin - Panel de Control Pokémon Full-Stack</p>
         </footer>
     </div>
     <script src="usual.js"></script>
