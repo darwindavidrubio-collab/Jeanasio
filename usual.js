@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000/entrenadores";
+const API_URL = "https://jeanasio.onrender.com/entrenadores";
 
 async function obtenerEntrenadores() {
     const res = await fetch(API_URL);
