@@ -1,7 +1,7 @@
 const API_URL = "https://jeanasio.onrender.com";
 
 // ==========================================
-// 1. SISTEMA DE SEGURIDAD VIP
+// 1. SISTEMA DE SEGURIDAD Y AUDIO VIP
 // ==========================================
 
 async function iniciarSesion() {
@@ -22,15 +22,23 @@ async function iniciarSesion() {
 
         if (respuesta.ok) {
             const datos = await respuesta.json();
-            localStorage.setItem("tokenVIP", datos.access_token); // Guardamos la llave
+            localStorage.setItem("tokenVIP", datos.access_token);
 
-            // Transición de pantalla
+            // Transición de pantalla (Flexbox para el header)
             document.getElementById("login-section").style.display = "none";
             document.getElementById("gym-section").style.display = "block";
-            document.getElementById("header-actions").style.display = "block";
+            document.getElementById("header-actions").style.display = "flex";
 
             errorText.innerText = "";
-            cargarEntrenadores(); // Cargamos los datos
+            cargarEntrenadores();
+            cargarUsuarios(); // Carga el Panel de Dios
+
+            // Iniciar Música Épica
+            const audio = document.getElementById("musicaFondo");
+            if (audio) {
+                audio.volume = document.getElementById("volumen-slider").value;
+                audio.play().catch(e => console.log("Navegador bloqueó el audio:", e));
+            }
         } else {
             errorText.innerText = "❌ Credenciales incorrectas.";
         }
@@ -40,21 +48,20 @@ async function iniciarSesion() {
 }
 
 function cerrarSesion() {
-    // 1. Preguntamos primero. Si el usuario dice "Cancelar" (false), detenemos la función con el "return"
-    if (!confirm("¿Estás seguro de que quieres cerrar tu sesión y salir del gimnasio?")) {
-        return;
+    if (!confirm("¿Estás seguro de que quieres cerrar tu sesión y salir del gimnasio?")) return;
+
+    // Detener la música
+    const audio = document.getElementById("musicaFondo");
+    if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
     }
 
-    // 2. Si dice "Aceptar", el código continúa y cerramos todo
     localStorage.removeItem("tokenVIP");
     document.getElementById("login-section").style.display = "block";
     document.getElementById("gym-section").style.display = "none";
     document.getElementById("header-actions").style.display = "none";
-
-    // Ocultar también el panel de Dios por si acaso
     document.getElementById("admin-panel").style.display = "none";
-
-    // Limpiamos la contraseña para que no quede guardada visualmente
     document.getElementById("login-password").value = "";
 }
 
@@ -66,13 +73,53 @@ function obtenerHeadersVIP() {
 }
 
 // ==========================================
-// 2. PANEL DE CONTROL (CRUD)
+// 2. CONTROLES DE MÚSICA
+// ==========================================
+
+function cambiarVolumen(valor) {
+    const audio = document.getElementById("musicaFondo");
+    const btnMute = document.getElementById("btn-mute");
+
+    if (audio) {
+        audio.volume = valor;
+        if (valor == 0) {
+            btnMute.innerText = "🔇";
+            audio.muted = true;
+        } else {
+            btnMute.innerText = "🔊";
+            audio.muted = false;
+        }
+    }
+}
+
+function mutearMusica() {
+    const audio = document.getElementById("musicaFondo");
+    const btnMute = document.getElementById("btn-mute");
+    const slider = document.getElementById("volumen-slider");
+
+    if (!audio || !btnMute) return;
+
+    audio.muted = !audio.muted;
+
+    if (audio.muted) {
+        btnMute.innerText = "🔇";
+        btnMute.setAttribute("aria-label", "Activar música");
+        slider.value = 0;
+    } else {
+        btnMute.innerText = "🔊";
+        btnMute.setAttribute("aria-label", "Silenciar música");
+        slider.value = audio.volume > 0 ? audio.volume : 0.5;
+        if (audio.volume === 0) audio.volume = 0.5;
+    }
+}
+
+// ==========================================
+// 3. PANEL DE CONTROL (CRUD)
 // ==========================================
 
 async function cargarEntrenadores() {
     const respuesta = await fetch(`${API_URL}/entrenadores`);
     const entrenadores = await respuesta.json();
-
     const lista = document.getElementById("lista-entrenadores");
     lista.innerHTML = "";
 
@@ -82,7 +129,6 @@ async function cargarEntrenadores() {
     }
 
     entrenadores.forEach(e => {
-        // Creamos la tarjeta usando tus estilos
         lista.innerHTML += `
         <article>
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -103,8 +149,6 @@ async function cargarEntrenadores() {
 async function crearEntrenador() {
     const nombre = document.getElementById("nombre").value;
     const ciudad = document.getElementById("ciudad").value;
-
-    // Leemos el Radio Button que esté seleccionado
     const medallaRadio = document.querySelector('input[name="medalla_opt"]:checked');
     const medalla = medallaRadio ? (medallaRadio.value === "true") : false;
 
@@ -134,29 +178,79 @@ async function eliminarEntrenador(id) {
         method: "DELETE",
         headers: obtenerHeadersVIP()
     });
-
     if (respuesta.ok) cargarEntrenadores();
     else alert("🚨 Error: Permiso denegado.");
 }
 
 async function eliminarTodos() {
     if (!confirm("¿Estás seguro de que quieres borrar TODA la base de datos?")) return;
-
     const respuesta = await fetch(`${API_URL}/eliminar-todo`, {
         method: "DELETE",
         headers: obtenerHeadersVIP()
     });
-
     if (respuesta.ok) cargarEntrenadores();
     else alert("🚨 Error: Permiso denegado.");
 }
 
-// Comprobar si ya estamos logueados al cargar la página
+// ==========================================
+// 4. BÓVEDA SECRETA (PANEL DE DIOS)
+// ==========================================
+
+async function cargarUsuarios() {
+    const respuesta = await fetch(`${API_URL}/usuarios-panel`, { headers: obtenerHeadersVIP() });
+    const panelAdmin = document.getElementById("admin-panel");
+
+    if (respuesta.ok) {
+        panelAdmin.style.display = "block";
+        const usuarios = await respuesta.json();
+        const lista = document.getElementById("lista-usuarios");
+        lista.innerHTML = "";
+
+        usuarios.forEach(u => {
+            lista.innerHTML += `
+            <article style="border-left: 5px solid #fbbf24;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-main);">Usuario: ${u.username}</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">ID de Sistema: ${u.id}</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-delete" onclick="eliminarUsuario(${u.id})">Expulsar 🗑️</button>
+                    </div>
+                </div>
+            </article>`;
+        });
+    } else {
+        panelAdmin.style.display = "none";
+    }
+}
+
+async function eliminarUsuario(id) {
+    if (!confirm(`🚨 CUIDADO 🚨\n¿Estás seguro de que quieres EXPULSAR a este usuario del sistema para siempre?`)) return;
+
+    const respuesta = await fetch(`${API_URL}/usuarios-panel/${id}`, {
+        method: "DELETE",
+        headers: obtenerHeadersVIP()
+    });
+
+    if (respuesta.ok) {
+        alert("¡Usuario eliminado con éxito!");
+        cargarUsuarios();
+    } else {
+        const error = await respuesta.json();
+        alert(`❌ No se pudo borrar: ${error.detail}`);
+    }
+}
+
+// ==========================================
+// 5. INICIALIZADOR AL CARGAR LA PÁGINA
+// ==========================================
 window.onload = () => {
     if (localStorage.getItem("tokenVIP")) {
         document.getElementById("login-section").style.display = "none";
         document.getElementById("gym-section").style.display = "block";
-        document.getElementById("header-actions").style.display = "block";
+        document.getElementById("header-actions").style.display = "flex";
         cargarEntrenadores();
+        cargarUsuarios();
     }
 };

@@ -10,38 +10,58 @@
 </head>
 
 <body>
-    <canvas id="batCanvas"></canvas>
+    <canvas id="batCanvas" role="presentation"></canvas>
+    <audio id="musicaFondo" loop aria-hidden="true">
+        <source src="Musica/Cynthia.mp3" type="audio/mpeg" preload="auto">
+    </audio>
 
     <div class="container">
         <header>
             <h1>Jeanasio de Darwin y Otaku</h1>
-            <div class="header-center">
-                <img src="Imagenes/Icono3.png" alt="Escudo" class="Logo-escudo">
-            </div>
-            <div class="header-right" id="header-actions" style="display: none; text-align: right;">
+            <figure class="header-center" style="margin: 0;">
+                <img src="Imagenes/Icono3.png" alt="Escudo oficial del Jeanasio Pokémon" class="Logo-escudo">
+            </figure>
+
+            <div class="header-right" id="header-actions"
+                style="display: none; text-align: right; align-items: center; gap: 15px; justify-content: flex-end;">
+                <div
+                    style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border);">
+                    <button id="btn-mute" class="btn" onclick="mutearMusica()" aria-label="Silenciar música"
+                        style="color: #a1a1aa; border: none; padding: 0; background: transparent; font-size: 1.2rem; cursor: pointer;">🔊</button>
+                    <input type="range" id="volumen-slider" min="0" max="1" step="0.05" value="0.5"
+                        oninput="cambiarVolumen(this.value)" aria-label="Control de volumen"
+                        style="width: 80px; cursor: pointer; accent-color: var(--accent);">
+                </div>
+
                 <button class="btn btn-delete-all" onclick="cerrarSesion()"
                     style="color: white; border-color: var(--border);">Cerrar Sesión</button>
             </div>
         </header>
 
         <main>
-            <section id="login-section">
-                <h2>Acceso Restringido (VIP)</h2>
-                <div class="form-group">
-                    <label for="login-username">Usuario Administrador</label>
-                    <input type="text" id="login-username" placeholder="Ej: Ash Ketchum">
-                </div>
-                <div class="form-group">
-                    <label for="login-password">Contraseña</label>
-                    <input type="password" id="login-password" placeholder="Tu clave secreta">
-                </div>
-                <button class="btn btn-save" onclick="iniciarSesion()">Desbloquear Gimnasio</button>
-                <p id="login-error" style="color: var(--danger); text-align: center; margin-top: 15px;"></p>
+            <section id="login-section" aria-labelledby="login-title">
+                <h2 id="login-title">Acceso Restringido (VIP)</h2>
+                <form onsubmit="event.preventDefault(); iniciarSesion();">
+                    <div class="form-group">
+                        <label for="login-username">Usuario Administrador</label>
+                        <input type="text" id="login-username" required placeholder="Ej: Ash Ketchum"
+                            autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" required placeholder="Tu clave secreta"
+                            autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-save">Desbloquear Gimnasio</button>
+                </form>
+                <p id="login-error" role="alert" style="color: var(--danger); text-align: center; margin-top: 15px;">
+                </p>
             </section>
 
             <div id="gym-section" style="display: none;">
-                <section>
-                    <h2>Registrar Entrenador</h2>
+
+                <section id="registro-entrenadores" aria-labelledby="registro-title">
+                    <h2 id="registro-title">Registrar Entrenador</h2>
                     <div class="form-group">
                         <label for="nombre">Nombre Completo</label>
                         <input type="text" id="nombre" placeholder="Ej: Ash Ketchum">
@@ -71,160 +91,37 @@
                             </label>
                         </div>
                     </div>
-
                     <button class="btn btn-save" onclick="crearEntrenador()">Guardar Entrenador</button>
                 </section>
 
-                <section>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2>Base de Datos</h2>
+                <section id="base-datos" aria-labelledby="db-title">
+                    <header
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 id="db-title" style="margin: 0;">Base de Datos</h2>
                         <button class="btn btn-delete-all" onclick="eliminarTodos()">Borrar Todo</button>
-                    </div>
-                    <div id="lista-entrenadores"></div>
+                    </header>
+                    <div id="lista-entrenadores" role="region" aria-live="polite"></div>
                 </section>
 
-                <section id="admin-panel"
-                    style="display: none; border-color: #fbbf24; box-shadow: 0 4px 20px rgba(251, 191, 36, 0.1);">
-                    <h2 style="color: #fbbf24;">👑 Bóveda Secreta (Panel de Dios)</h2>
+                <aside id="admin-panel"
+                    style="display: none; border-color: #fbbf24; box-shadow: 0 4px 20px rgba(251, 191, 36, 0.1);"
+                    aria-labelledby="admin-title">
+                    <h2 id="admin-title" style="color: #fbbf24;">👑 Bóveda Secreta (Panel de Dios)</h2>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">Control total de
                         usuarios registrados en el sistema. (Vista exclusiva de Darwin)</p>
                     <div id="lista-usuarios"></div>
-                </section>
+                </aside>
+
             </div>
         </main>
 
         <footer>
-            <p>&copy; 2026 - Darwin - Panel de Control Pokémon Full-Stack</p>
+            <small>&copy; 2026 - Darwin - Panel de Control Pokémon Full-Stack</small>
         </footer>
     </div>
 
     <script src="usual.js"></script>
-
-    <script>
-        const canvas = document.getElementById('batCanvas');
-        const ctx = canvas.getContext('2d');
-
-        // 1. RASTREO DEL RATÓN
-        let mouse = { x: -1000, y: -1000 };
-
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-
-        window.addEventListener('mouseout', () => {
-            mouse.x = -1000;
-            mouse.y = -1000;
-        });
-
-        // 2. DECLARAMOS EL ARREGLO Y LA CLASE PRIMERO
-        const nodes = [];
-
-        class EnergyNode {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.vx = (Math.random() - 0.5) * 2;
-                this.vy = (Math.random() - 0.5) * 2;
-                this.radius = Math.random() * 2 + 1;
-                this.color = Math.random() > 0.2 ? '#ffcc00' : '#00ffff';
-            }
-
-            update() {
-                this.x += this.vx;
-                this.y += this.vy;
-                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
-            }
-
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.shadowBlur = 8;
-                ctx.shadowColor = this.color;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-        }
-
-        // 3. LA FUNCIÓN RESIZE CORREGIDA (Usa nodes y EnergyNode)
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            // Recalculamos cuántos nodos necesitamos
-            const newNodeCount = Math.floor((window.innerWidth * window.innerHeight) / 9000);
-
-            if (newNodeCount > nodes.length) {
-                // Si la pantalla creció, inyectamos más nodos de energía
-                for (let i = nodes.length; i < newNodeCount; i++) {
-                    nodes.push(new EnergyNode());
-                }
-            } else if (newNodeCount < nodes.length) {
-                // Si la pantalla se achicó, eliminamos los que sobran
-                nodes.splice(newNodeCount);
-            }
-        }
-
-        // Inicializamos el evento y llamamos a resize por primera vez 
-        // (Esto creará automáticamente los nodos iniciales)
-        window.addEventListener('resize', resize);
-        resize();
-
-        // 4. BUCLE DE RENDERIZADO PRINCIPAL (60 FPS)
-        function animate() {
-            ctx.fillStyle = '#0a0a0f';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            nodes.forEach(node => {
-                node.update();
-                node.draw();
-            });
-
-            for (let i = 0; i < nodes.length; i++) {
-                // A) CONEXIÓN PASIVA (Entre Nodos)
-                for (let j = i + 1; j < nodes.length; j++) {
-                    const dx = nodes[i].x - nodes[j].x;
-                    const dy = nodes[i].y - nodes[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < 120) {
-                        ctx.beginPath();
-                        const opacity = 1 - (distance / 120);
-                        ctx.strokeStyle = `rgba(0, 255, 255, ${opacity * 0.4})`;
-                        ctx.lineWidth = 0.8;
-                        ctx.moveTo(nodes[i].x, nodes[i].y);
-                        ctx.lineTo(nodes[j].x, nodes[j].y);
-                        ctx.stroke();
-                    }
-                }
-
-                // B) CONEXIÓN ACTIVA (Con el Ratón)
-                const dxMouse = nodes[i].x - mouse.x;
-                const dyMouse = nodes[i].y - mouse.y;
-                const distanceMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
-
-                if (distanceMouse < 180) {
-                    ctx.beginPath();
-                    const intensity = 1 - (distanceMouse / 180);
-                    ctx.strokeStyle = `rgba(255, 204, 0, ${intensity})`;
-                    ctx.lineWidth = intensity * 2.5;
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = '#ffcc00';
-                    ctx.moveTo(nodes[i].x, nodes[i].y);
-                    ctx.lineTo(mouse.x, mouse.y);
-                    ctx.stroke();
-                    ctx.shadowBlur = 0;
-                }
-            }
-
-            requestAnimationFrame(animate);
-        }
-
-        // Encender el sistema
-        animate();
-    </script>
+    <script src="motor_canvas.js"></script>
 </body>
 
 </html>
