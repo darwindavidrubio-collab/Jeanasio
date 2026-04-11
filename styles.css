@@ -1,12 +1,18 @@
 :root {
-    --bg-body: #0f172a;
-    --bg-card: #1e293b;
+    --bg-body: transparent;
+    /* Cambiado a transparente para que el canvas de fondo se vea perfectamente */
+    --bg-card: rgba(15, 22, 30, 0.75);
+    /* Tono industrial oscuro semitransparente (menos morado, más acero) */
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --accent: #38bdf8;
-    --accent-hover: #0ea5e9;
-    --danger: #ef4444;
-    --border: #334155;
+    --accent: #00bcd4;
+    /* Cyan eléctrico elegante, no cegador */
+    --accent-hover: #0097a7;
+    /* Cyan un poco más profundo para el efecto hover */
+    --danger: #d32f2f;
+    /* Rojo de alerta más sobrio y menos neón */
+    --border: #233544;
+    /* Gris azulado oscuro (metálico) */
     --font: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -22,6 +28,8 @@ body {
 .container {
     max-width: 700px;
     margin: auto;
+    position: relative;
+    z-index: 10;
 }
 
 header {
@@ -54,11 +62,12 @@ header h1 {
 }
 
 .Logo-escudo {
-    height: 100px;
-    width: 100px;
-    filter: brightness(1.1) contrast(1.1) drop-shadow(0 0 15px rgba(8, 94, 134, 0.4));
+    height: 170px;
+    width: 170px;
+    /* Sombra ajustada a tono cyan */
+    filter: brightness(1.1) contrast(1.1) drop-shadow(0 0 15px rgba(0, 188, 212, 0.4));
     border: 1px solid var(--border);
-    border-radius: 50%;
+    border-radius: 100%;
     object-fit: cover;
     object-position: center;
 }
@@ -70,8 +79,14 @@ section {
     border-radius: 16px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     animation: aparecer 0.4s ease-out;
+}
+
+h1 {
+    color: var(--accent);
 }
 
 h2 {
@@ -97,27 +112,29 @@ label {
 input[type="text"],
 input[type="password"] {
     width: 100%;
-    background: #0f172a;
+    background: rgba(5, 10, 15, 0.8);
+    /* Fondo de input más neutro */
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 12px 1px;
+    padding: 10px 2px;
     color: white;
-    font-size: 1rem;
-    outline: none;
-    transition: border 0.2s;
+    font-size: 1.1rem;
     text-align: left;
     padding-left: 10px;
+    outline: none;
+    transition: all 0.3s ease;
 }
 
 input[type="text"]:focus,
 input[type="password"]:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+    /* Resplandor cyan suave al escribir */
+    box-shadow: 0 0 10px rgba(0, 188, 212, 0.25);
 }
 
 .select-moderno {
     width: 100%;
-    background: #0f172a;
+    background: rgba(5, 10, 15, 0.8);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 12px 15px;
@@ -126,7 +143,8 @@ input[type="password"]:focus {
     outline: none;
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2338bdf8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    /* La flechita ahora es de color cyan (%2300bcd4) */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2300bcd4'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 15px center;
     background-size: 15px;
@@ -153,7 +171,8 @@ input[type="radio"] {
 
 .btn-save {
     background: var(--accent);
-    color: #0f172a;
+    color: #051014;
+    /* Texto muy oscuro para contrastar con el botón cyan */
     width: 100%;
     font-size: 1rem;
     margin-top: 10px;
@@ -178,7 +197,7 @@ input[type="radio"] {
 }
 
 .btn-delete {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(211, 47, 47, 0.1);
     color: var(--danger);
     font-size: 0.9rem;
 }
@@ -190,7 +209,8 @@ input[type="radio"] {
 
 /* TARJETAS DE ENTRENADORES */
 article {
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(10, 18, 28, 0.6);
+    /* Fondo de tarjeta un poco más acerado */
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
@@ -222,4 +242,16 @@ footer {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* CANVAS */
+#batCanvas {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none;
 }
