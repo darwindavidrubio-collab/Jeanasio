@@ -122,7 +122,25 @@
                     <header
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h2 id="db-title" style="margin: 0;">Base de Datos</h2>
-                        <button class="btn btn-delete-all" onclick="eliminarTodos()">Borrar Todo</button>
+
+                        <menu aria-label="Controles de la base de datos"
+                            style="display: flex; align-items: center; gap: 15px; margin: 0; padding: 0; list-style: none;">
+                            <li>
+                                <button class="btn" id="btn-refresh" onclick="refrescarBaseDatos()"
+                                    aria-controls="lista-entrenadores" aria-label="Actualizar lista de entrenadores"
+                                    title="Buscar entrenadores nuevos"
+                                    style="background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 5px 12px; cursor: pointer; border-radius: 8px; font-weight: bold; transition: 0.3s;">
+                                    🔄 Refrescar
+                                </button>
+                            </li>
+                            <li>
+                                <button class="btn btn-delete-all" onclick="eliminarTodos()"
+                                    aria-controls="lista-entrenadores"
+                                    aria-label="Borrar permanentemente todos los entrenadores">
+                                    Borrar Todo
+                                </button>
+                            </li>
+                        </menu>
                     </header>
 
                     <search style="display: block; margin-bottom: 20px;">

@@ -1,7 +1,8 @@
 const API_URL = "https://jeanasio.onrender.com";
-
+// "https://jeanasio.onrender.com"  cuando quiera cambiar algo del online
+// "http://127.0.0.1:8000" para el loqueri
 let paginaActual = 1;
-const LIMITE_POR_PAGINA = 5;
+const LIMITE_POR_PAGINA = 8;
 let busquedaActual = "";
 
 
@@ -177,13 +178,38 @@ async function cargarEntrenadores() {
     document.getElementById("btn-next").disabled = totalMostradosHastaAhora >= total;
 }
 
-// NUEVO: Función para cambiar de página
+//  Función para cambiar de página
 function cambiarPagina(direccion) {
     paginaActual += direccion;
     cargarEntrenadores();
 }
 
-// NUEVO: Función de búsqueda en tiempo real
+async function refrescarBaseDatos() {
+    const btnRefresh = document.getElementById("btn-refresh");
+    const textoOriginal = btnRefresh.innerHTML;
+
+    // 1. Feedback visual: Avisamos al usuario y bloqueamos el botón para evitar spam de clics
+    btnRefresh.innerHTML = "⏳ Cargando...";
+    btnRefresh.disabled = true;
+
+    // 2. Reseteamos la vista: Borramos búsquedas activas y volvemos a la página 1 para ver lo más reciente
+    paginaActual = 1;
+    document.getElementById("buscador-entrenadores").value = "";
+    busquedaActual = "";
+
+    // 3. Volvemos a consumir la API
+    await cargarEntrenadores();
+
+    // 4. Restauramos el botón a su estado normal (con un pequeño retraso para que se note el efecto)
+    setTimeout(() => {
+        btnRefresh.innerHTML = textoOriginal;
+        btnRefresh.disabled = false;
+    }, 500);
+}
+
+
+
+//Función de búsqueda en tiempo real
 function buscarEntrenador() {
     busquedaActual = document.getElementById("buscador-entrenadores").value;
     paginaActual = 1; // Si busco a alguien, debo reiniciar a la página 1
@@ -299,4 +325,8 @@ window.onload = () => {
         cargarEntrenadores();
         cargarUsuarios();
     }
+
+    window.addEventListener("beforeunload", () => {
+        localStorage.removeItem("tokenVIP");
+    });
 };
