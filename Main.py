@@ -4,16 +4,14 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
-from datetime import datetime, timedelta, timezone # Actualizado para Python 3.14
+from datetime import datetime, timedelta, timezone 
 from jose import JWTError, jwt
 import bcrypt
+from typing import Optional
 
-# Importamos todo de tu base de datos
 import models
 from database import SessionLocal, engine
 
-# 1. CREACIÓN DE LA BASE DE DATOS
-# Se asegura de leer los modelos antes de crear las tablas
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -23,7 +21,6 @@ SECRET_KEY = "llave_maestra_hiper_secreta_del_gimnasio"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 
 
-# La puerta para pedir el pase
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 app.add_middleware(
@@ -38,6 +35,7 @@ class EntrenadorSchema(BaseModel):
     nombre: str
     ciudad: str
     medalla: bool
+    pokemon: str # Aseguramos que el Pokémon viaja desde el Frontend
 
 class UsuarioCrear(BaseModel):
     username: str
@@ -62,16 +60,13 @@ def verificar_password(password_plana, password_triturada):
     hash_bytes = password_triturada.encode('utf-8')
     return bcrypt.checkpw(password_bytes, hash_bytes)
 
-# --- FABRICANTE DE PASES VIP ---
 def crear_token_acceso(data: dict):
     a_codificar = data.copy()
-    # En Python 3.14 se usa timezone.utc en lugar de utcnow()
     expira = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     a_codificar.update({"exp": expira})
     token_jwt = jwt.encode(a_codificar, SECRET_KEY, algorithm=ALGORITHM)
     return token_jwt
 
-# --- EL INSPECTOR DE PASES VIP ---
 def obtener_usuario_actual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -118,13 +113,32 @@ def inicio():
     return {"mensaje": "API Segura Activa"}
 
 @app.get("/entrenadores")
-def ver_todos(db: Session = Depends(get_db)):
-    return db.query(models.EntrenadorDB).all()
+def ver_todos(skip: int = 0, limit: int = 5, search: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.EntrenadorDB)
+    
+    # 1. Filtro de búsqueda (Buscamos si el nombre contiene el texto)
+    if search:
+        query = query.filter(models.EntrenadorDB.nombre.ilike(f"%{search}%"))
+        
+    # 2. Contamos cuántos registros hay en total con ese filtro
+    total_registros = query.count()
+    
+    # 3. Aplicamos la paginación (offset y limit)
+    entrenadores = query.offset(skip).limit(limit).all()
+    
+    # Ahora devolvemos un diccionario con el total y la lista
+    return {
+        "total": total_registros,
+        "entrenadores": entrenadores
+    }
 
 @app.post("/entrenadores")
 def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     nuevo_entrenador = models.EntrenadorDB(
-        nombre=entrenador.nombre, ciudad=entrenador.ciudad, medalla=entrenador.medalla,
+        nombre=entrenador.nombre, 
+        ciudad=entrenador.ciudad, 
+        medalla=entrenador.medalla,
+        pokemon=entrenador.pokemon, # ¡NUEVO CAMPO GUARDADO!
         poder_total=1000 if entrenador.medalla else 0,
         mensaje_medalla="¡Felicidades!" if entrenador.medalla else "Sigue intentando"
     )
@@ -137,13 +151,13 @@ def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db)
 def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     db_entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
     
-    # Parche de seguridad: Si no existe el ID, avisamos en lugar de crashear
     if not db_entrenador:
         raise HTTPException(status_code=404, detail="Entrenador no encontrado")
 
     db_entrenador.nombre = entrenador.nombre
     db_entrenador.ciudad = entrenador.ciudad
     db_entrenador.medalla = entrenador.medalla
+    db_entrenador.pokemon = entrenador.pokemon # ¡NUEVO CAMPO ACTUALIZADO!
     db_entrenador.poder_total = 1000 if entrenador.medalla else 0
     db.commit()
     db.refresh(db_entrenador)
@@ -158,7 +172,9 @@ def eliminar_entrenador_por_ID(entrenador_id: int, db: Session = Depends(get_db)
 
     db.delete(entrenador)
     db.commit()
-    return {"mensaje": "Entrenador eliminado"}
+    return {
+        "mensaje": "Entrenador eliminado"
+    }
 
 @app.delete("/eliminar-todo") 
 def eliminar_todos_entrenadores(db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
@@ -168,30 +184,23 @@ def eliminar_todos_entrenadores(db: Session = Depends(get_db), usuario_actual: m
 
 
 # =================================================================
-# 7. LA BÓVEDA SECRETA (PANEL DE DIOS - SOLO PARA DARWIN)
+# 7. LA BÓVEDA SECRETA (PANEL DE DIOS)
 # =================================================================
 
 class NuevaPasswordSchema(BaseModel):
     nueva_password: str
 
-# El guardia personal de Darwin
 def verificar_super_admin(usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
-    # Reemplaza "darwin_admin" con tu usuario maestro real
     if usuario_actual.username != "darwin_admin": 
         raise HTTPException(status_code=403, detail="¡Alerta de intruso! Solo Darwin tiene este poder.")
     return usuario_actual
 
-
-# 👁️ Ver todos los usuarios (Sin contraseñas por seguridad)
 @app.get("/usuarios-panel")
 def ver_todos_los_usuarios(db: Session = Depends(get_db), admin: models.UsuarioDB = Depends(verificar_super_admin)):
     usuarios = db.query(models.UsuarioDB).all()
-    # Filtramos la respuesta para que el JSON no incluya los hashes de contraseñas
     lista_segura = [{"id": u.id, "username": u.username} for u in usuarios]
     return lista_segura
 
-
-# 🗑️ Eliminar un usuario del sistema
 @app.delete("/usuarios-panel/{usuario_id}")
 def eliminar_usuario_del_sistema(usuario_id: int, db: Session = Depends(get_db), admin: models.UsuarioDB = Depends(verificar_super_admin)):
     usuario_a_borrar = db.query(models.UsuarioDB).filter(models.UsuarioDB.id == usuario_id).first()
@@ -204,10 +213,9 @@ def eliminar_usuario_del_sistema(usuario_id: int, db: Session = Depends(get_db),
 
     db.delete(usuario_a_borrar)
     db.commit()
-    return {"mensaje": f"El usuario {usuario_a_borrar.username} ha sido expulsado del sistema."}
+    return {"mensaje": f"El usuario {usuario_a_borrar.username} ha sido expulsado del sistema." 
+    }
 
-
-# 🔑 Resetear/Editar la contraseña de alguien
 @app.put("/usuarios-panel/{usuario_id}/password")
 def cambiar_password_usuario(usuario_id: int, datos: NuevaPasswordSchema, db: Session = Depends(get_db), admin: models.UsuarioDB = Depends(verificar_super_admin)):
     usuario_a_editar = db.query(models.UsuarioDB).filter(models.UsuarioDB.id == usuario_id).first()
@@ -215,10 +223,9 @@ def cambiar_password_usuario(usuario_id: int, datos: NuevaPasswordSchema, db: Se
     if not usuario_a_editar:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Encriptamos la nueva contraseña antes de guardarla
     nueva_password_triturada = obtener_password_encriptada(datos.nueva_password)
     usuario_a_editar.hashed_password = nueva_password_triturada
     db.commit()
     
-    return {"mensaje": f"La contraseña de {usuario_a_editar.username} ha sido actualizada con éxito."}    
-     
+    return {"mensaje": f"La contraseña de {usuario_a_editar.username} ha sido actualizada con éxito."
+    }

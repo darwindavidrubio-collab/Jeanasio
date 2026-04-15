@@ -10,6 +10,7 @@ class EntrenadorDB(Base):
     medalla = Column(Boolean)
     poder_total = Column(Integer)
     mensaje_medalla = Column(String)
+    pokemon = Column(String, default="pikachu")
 
 class UsuarioDB(Base):
     __tablename__ = "usuarios"

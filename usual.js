@@ -1,5 +1,10 @@
 const API_URL = "https://jeanasio.onrender.com";
 
+let paginaActual = 1;
+const LIMITE_POR_PAGINA = 5;
+let busquedaActual = "";
+
+
 // ==========================================
 // 1. SISTEMA DE SEGURIDAD Y AUDIO VIP
 // ==========================================
@@ -114,29 +119,47 @@ function mutearMusica() {
 }
 
 // ==========================================
-// 3. PANEL DE CONTROL (CRUD)
+// 3. PANEL DE CONTROL (CRUD CON POKÉAPI)
 // ==========================================
 
 async function cargarEntrenadores() {
-    const respuesta = await fetch(`${API_URL}/entrenadores`);
-    const entrenadores = await respuesta.json();
+    // Calculamos desde dónde empezar a buscar en la base de datos
+    const skip = (paginaActual - 1) * LIMITE_POR_PAGINA;
+    const url = `${API_URL}/entrenadores?skip=${skip}&limit=${LIMITE_POR_PAGINA}&search=${encodeURIComponent(busquedaActual)}`;
+
+    const respuesta = await fetch(url);
+    const data = await respuesta.json();
+
+    // El backend ahora envía { total: X, entrenadores: [...] }
+    const entrenadores = data.entrenadores;
+    const total = data.total;
+
     const lista = document.getElementById("lista-entrenadores");
     lista.innerHTML = "";
 
     if (entrenadores.length === 0) {
-        lista.innerHTML = "<p style='color: var(--text-muted); text-align: center;'>No hay entrenadores registrados aún.</p>";
+        lista.innerHTML = "<p style='color: var(--text-muted); text-align: center;'>No se encontraron entrenadores.</p>";
+        document.getElementById("btn-prev").disabled = true;
+        document.getElementById("btn-next").disabled = true;
+        document.getElementById("indicador-pagina").innerText = "Página 0";
         return;
     }
 
     entrenadores.forEach(e => {
+        const nombrePokemon = e.pokemon ? e.pokemon.toLowerCase() : "pikachu";
+        const spriteAnimado = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${nombrePokemon}.gif`;
+
         lista.innerHTML += `
-        <article>
+        <article style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--accent);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 style="margin: 0; color: var(--text-main);">${e.nombre}</h3>
-                    <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">
-                        🌍 ${e.ciudad} | ${e.medalla ? "🏅 Campeón" : "🎒 Novato"} | ⚡ Poder: ${e.poder_total}
-                    </p>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <img src="${spriteAnimado}" alt="${nombrePokemon}" style="height: 60px; image-rendering: pixelated; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-main);">${e.nombre}</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">
+                            🌍 ${e.ciudad} | ${e.medalla ? "🏅 Campeón" : "🎒 Novato"} | ⚡ Poder: ${e.poder_total || "Desconocido"}
+                        </p>
+                    </div>
                 </div>
                 <div>
                     <button class="btn btn-delete" onclick="eliminarEntrenador(${e.id})">Borrar</button>
@@ -144,29 +167,52 @@ async function cargarEntrenadores() {
             </div>
         </article>`;
     });
+
+    // Control dinámico de los botones de Paginación
+    document.getElementById("indicador-pagina").innerText = `Página ${paginaActual}`;
+    document.getElementById("btn-prev").disabled = paginaActual === 1;
+
+    // Si la cantidad de páginas superó o igualó el total de registros, bloqueamos el botón "Siguiente"
+    const totalMostradosHastaAhora = paginaActual * LIMITE_POR_PAGINA;
+    document.getElementById("btn-next").disabled = totalMostradosHastaAhora >= total;
+}
+
+// NUEVO: Función para cambiar de página
+function cambiarPagina(direccion) {
+    paginaActual += direccion;
+    cargarEntrenadores();
+}
+
+// NUEVO: Función de búsqueda en tiempo real
+function buscarEntrenador() {
+    busquedaActual = document.getElementById("buscador-entrenadores").value;
+    paginaActual = 1; // Si busco a alguien, debo reiniciar a la página 1
+    cargarEntrenadores();
 }
 
 async function crearEntrenador() {
     const nombre = document.getElementById("nombre").value;
     const ciudad = document.getElementById("ciudad").value;
+    const pokemon = document.getElementById("pokemon").value; // ¡NUEVO CAMPO!
     const medallaRadio = document.querySelector('input[name="medalla_opt"]:checked');
     const medalla = medallaRadio ? (medallaRadio.value === "true") : false;
 
-    if (!nombre || !ciudad) {
-        alert("Por favor completa el nombre y selecciona una ciudad.");
+    if (!nombre || !ciudad || !pokemon) {
+        alert("Por favor completa el nombre, la ciudad y elige un Pokémon.");
         return;
     }
 
     const respuesta = await fetch(`${API_URL}/entrenadores`, {
         method: "POST",
         headers: obtenerHeadersVIP(),
-        body: JSON.stringify({ nombre, ciudad, medalla })
+        body: JSON.stringify({ nombre, ciudad, medalla, pokemon }) // ENVIAMOS EL POKÉMON
     });
 
     if (respuesta.ok) {
         cargarEntrenadores();
         document.getElementById("nombre").value = "";
         document.getElementById("ciudad").value = "";
+        document.getElementById("pokemon").value = ""; // Limpiamos el selector
     } else {
         alert("🚨 No tienes permiso o la sesión expiró.");
         cerrarSesion();
@@ -208,7 +254,7 @@ async function cargarUsuarios() {
 
         usuarios.forEach(u => {
             lista.innerHTML += `
-            <article style="border-left: 5px solid #fbbf24;">
+            <article style="border-left: 5px solid #fbbf24; background: rgba(0,0,0,0.3); padding: 10px 15px; border-radius: 8px; margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h3 style="margin: 0; color: var(--text-main);">Usuario: ${u.username}</h3>
