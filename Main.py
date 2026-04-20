@@ -35,7 +35,7 @@ class EntrenadorSchema(BaseModel):
     nombre: str
     ciudad: str
     medalla: bool
-    pokemon: str # Aseguramos que el Pokémon viaja desde el Frontend
+    pokemon: str 
 
 class UsuarioCrear(BaseModel):
     username: str
@@ -116,17 +116,12 @@ def inicio():
 def ver_todos(skip: int = 0, limit: int = 5, search: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(models.EntrenadorDB)
     
-    # 1. Filtro de búsqueda (Buscamos si el nombre contiene el texto)
     if search:
         query = query.filter(models.EntrenadorDB.nombre.ilike(f"%{search}%"))
         
-    # 2. Contamos cuántos registros hay en total con ese filtro
     total_registros = query.count()
-    
-    # 3. Aplicamos la paginación (offset y limit)
     entrenadores = query.offset(skip).limit(limit).all()
     
-    # Ahora devolvemos un diccionario con el total y la lista
     return {
         "total": total_registros,
         "entrenadores": entrenadores
@@ -138,7 +133,7 @@ def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db)
         nombre=entrenador.nombre, 
         ciudad=entrenador.ciudad, 
         medalla=entrenador.medalla,
-        pokemon=entrenador.pokemon, # ¡NUEVO CAMPO GUARDADO!
+        pokemon=entrenador.pokemon, 
         poder_total=1000 if entrenador.medalla else 0,
         mensaje_medalla="¡Felicidades!" if entrenador.medalla else "Sigue intentando"
     )
@@ -157,7 +152,7 @@ def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: 
     db_entrenador.nombre = entrenador.nombre
     db_entrenador.ciudad = entrenador.ciudad
     db_entrenador.medalla = entrenador.medalla
-    db_entrenador.pokemon = entrenador.pokemon # ¡NUEVO CAMPO ACTUALIZADO!
+    db_entrenador.pokemon = entrenador.pokemon 
     db_entrenador.poder_total = 1000 if entrenador.medalla else 0
     db.commit()
     db.refresh(db_entrenador)

@@ -1,4 +1,4 @@
-const API_URL = "https://jeanasio.onrender.com";
+const API_URL = "http://127.0.0.1:8000";
 // "https://jeanasio.onrender.com"  cuando quiera cambiar algo del online
 // "http://127.0.0.1:8000" para el loqueri
 let paginaActual = 1;
@@ -124,14 +124,12 @@ function mutearMusica() {
 // ==========================================
 
 async function cargarEntrenadores() {
-    // Calculamos desde dónde empezar a buscar en la base de datos
     const skip = (paginaActual - 1) * LIMITE_POR_PAGINA;
     const url = `${API_URL}/entrenadores?skip=${skip}&limit=${LIMITE_POR_PAGINA}&search=${encodeURIComponent(busquedaActual)}`;
 
     const respuesta = await fetch(url);
     const data = await respuesta.json();
 
-    // El backend ahora envía { total: X, entrenadores: [...] }
     const entrenadores = data.entrenadores;
     const total = data.total;
 
@@ -148,7 +146,8 @@ async function cargarEntrenadores() {
 
     entrenadores.forEach(e => {
         const nombrePokemon = e.pokemon ? e.pokemon.toLowerCase() : "pikachu";
-        const spriteAnimado = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${nombrePokemon}.gif`;
+        // ✅ CORRECCIÓN: Usamos el servidor de Showdown que sí acepta nombres de texto
+        const spriteAnimado = `https://play.pokemonshowdown.com/sprites/ani/${nombrePokemon}.gif`;
 
         lista.innerHTML += `
         <article style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--accent);">
@@ -169,16 +168,13 @@ async function cargarEntrenadores() {
         </article>`;
     });
 
-    // Control dinámico de los botones de Paginación
     document.getElementById("indicador-pagina").innerText = `Página ${paginaActual}`;
     document.getElementById("btn-prev").disabled = paginaActual === 1;
 
-    // Si la cantidad de páginas superó o igualó el total de registros, bloqueamos el botón "Siguiente"
     const totalMostradosHastaAhora = paginaActual * LIMITE_POR_PAGINA;
     document.getElementById("btn-next").disabled = totalMostradosHastaAhora >= total;
 }
 
-//  Función para cambiar de página
 function cambiarPagina(direccion) {
     paginaActual += direccion;
     cargarEntrenadores();
@@ -188,38 +184,31 @@ async function refrescarBaseDatos() {
     const btnRefresh = document.getElementById("btn-refresh");
     const textoOriginal = btnRefresh.innerHTML;
 
-    // 1. Feedback visual: Avisamos al usuario y bloqueamos el botón para evitar spam de clics
     btnRefresh.innerHTML = "⏳ Cargando...";
     btnRefresh.disabled = true;
 
-    // 2. Reseteamos la vista: Borramos búsquedas activas y volvemos a la página 1 para ver lo más reciente
     paginaActual = 1;
     document.getElementById("buscador-entrenadores").value = "";
     busquedaActual = "";
 
-    // 3. Volvemos a consumir la API
     await cargarEntrenadores();
 
-    // 4. Restauramos el botón a su estado normal (con un pequeño retraso para que se note el efecto)
     setTimeout(() => {
         btnRefresh.innerHTML = textoOriginal;
         btnRefresh.disabled = false;
     }, 500);
 }
 
-
-
-//Función de búsqueda en tiempo real
 function buscarEntrenador() {
     busquedaActual = document.getElementById("buscador-entrenadores").value;
-    paginaActual = 1; // Si busco a alguien, debo reiniciar a la página 1
+    paginaActual = 1;
     cargarEntrenadores();
 }
 
 async function crearEntrenador() {
     const nombre = document.getElementById("nombre").value;
     const ciudad = document.getElementById("ciudad").value;
-    const pokemon = document.getElementById("pokemon").value; // ¡NUEVO CAMPO!
+    const pokemon = document.getElementById("pokemon").value;
     const medallaRadio = document.querySelector('input[name="medalla_opt"]:checked');
     const medalla = medallaRadio ? (medallaRadio.value === "true") : false;
 
@@ -231,14 +220,14 @@ async function crearEntrenador() {
     const respuesta = await fetch(`${API_URL}/entrenadores`, {
         method: "POST",
         headers: obtenerHeadersVIP(),
-        body: JSON.stringify({ nombre, ciudad, medalla, pokemon }) // ENVIAMOS EL POKÉMON
+        body: JSON.stringify({ nombre, ciudad, medalla, pokemon })
     });
 
     if (respuesta.ok) {
         cargarEntrenadores();
         document.getElementById("nombre").value = "";
         document.getElementById("ciudad").value = "";
-        document.getElementById("pokemon").value = ""; // Limpiamos el selector
+        document.getElementById("pokemon").value = "";
     } else {
         alert("🚨 No tienes permiso o la sesión expiró.");
         cerrarSesion();
@@ -330,3 +319,4 @@ window.onload = () => {
         localStorage.removeItem("tokenVIP");
     });
 };
+
