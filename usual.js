@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://jeanasio.onrender.com";
 // "https://jeanasio.onrender.com" para el online
 // "http://127.0.0.1:8000" para local 
 
