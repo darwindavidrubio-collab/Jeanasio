@@ -1,10 +1,10 @@
-const API_URL = "https://jeanasio.onrender.com";
-// "https://jeanasio.onrender.com"  cuando quiera cambiar algo del online
-// "http://127.0.0.1:8000" para el loqueri
+const API_URL = "http://127.0.0.1:8000";
+// "https://jeanasio.onrender.com" para el online
+// "http://127.0.0.1:8000" para local 
+
 let paginaActual = 1;
 const LIMITE_POR_PAGINA = 8;
 let busquedaActual = "";
-
 
 // ==========================================
 // 1. SISTEMA DE SEGURIDAD Y AUDIO VIP
@@ -30,20 +30,18 @@ async function iniciarSesion() {
             const datos = await respuesta.json();
             localStorage.setItem("tokenVIP", datos.access_token);
 
-            // Transición de pantalla (Flexbox para el header)
             document.getElementById("login-section").style.display = "none";
             document.getElementById("gym-section").style.display = "block";
             document.getElementById("header-actions").style.display = "flex";
 
             errorText.innerText = "";
             cargarEntrenadores();
-            cargarUsuarios(); // Carga el Panel de Dios
+            cargarUsuarios();
 
-            // Iniciar Música Épica
             const audio = document.getElementById("musicaFondo");
             if (audio) {
                 audio.volume = document.getElementById("volumen-slider").value;
-                audio.play().catch(e => console.log("Navegador bloqueó el audio:", e));
+                audio.play().catch(e => console.log("Audio bloqueado:", e));
             }
         } else {
             errorText.innerText = "❌ Credenciales incorrectas.";
@@ -54,15 +52,11 @@ async function iniciarSesion() {
 }
 
 function cerrarSesion() {
-    if (!confirm("¿Estás seguro de que quieres cerrar tu sesión y salir del gimnasio?")) return;
-
-    // Detener la música
     const audio = document.getElementById("musicaFondo");
     if (audio) {
         audio.pause();
         audio.currentTime = 0;
     }
-
     localStorage.removeItem("tokenVIP");
     document.getElementById("login-section").style.display = "block";
     document.getElementById("gym-section").style.display = "none";
@@ -85,7 +79,6 @@ function obtenerHeadersVIP() {
 function cambiarVolumen(valor) {
     const audio = document.getElementById("musicaFondo");
     const btnMute = document.getElementById("btn-mute");
-
     if (audio) {
         audio.volume = valor;
         if (valor == 0) {
@@ -104,28 +97,32 @@ function mutearMusica() {
     const slider = document.getElementById("volumen-slider");
 
     if (!audio || !btnMute) return;
-
     audio.muted = !audio.muted;
 
     if (audio.muted) {
         btnMute.innerText = "🔇";
-        btnMute.setAttribute("aria-label", "Activar música");
         slider.value = 0;
     } else {
         btnMute.innerText = "🔊";
-        btnMute.setAttribute("aria-label", "Silenciar música");
         slider.value = audio.volume > 0 ? audio.volume : 0.5;
-        if (audio.volume === 0) audio.volume = 0.5;
     }
 }
 
 // ==========================================
-// 3. PANEL DE CONTROL (CRUD CON POKÉAPI)
+// 3. PANEL DE CONTROL (CRUD Y FILTROS)
 // ==========================================
 
 async function cargarEntrenadores() {
+    const ciudad = document.getElementById("filtro-ciudad") ? document.getElementById("filtro-ciudad").value : "";
+    const pokemon = document.getElementById("filtro-pokemon") ? document.getElementById("filtro-pokemon").value : "";
+    const medalla = document.getElementById("filtro-medalla") ? document.getElementById("filtro-medalla").value : "";
+
     const skip = (paginaActual - 1) * LIMITE_POR_PAGINA;
-    const url = `${API_URL}/entrenadores?skip=${skip}&limit=${LIMITE_POR_PAGINA}&search=${encodeURIComponent(busquedaActual)}`;
+    let url = `${API_URL}/entrenadores?skip=${skip}&limit=${LIMITE_POR_PAGINA}&search=${encodeURIComponent(busquedaActual)}`;
+
+    if (ciudad) url += `&ciudad=${encodeURIComponent(ciudad)}`;
+    if (pokemon) url += `&pokemon=${encodeURIComponent(pokemon)}`;
+    if (medalla !== "") url += `&medalla=${medalla}`;
 
     const respuesta = await fetch(url);
     const data = await respuesta.json();
@@ -136,7 +133,7 @@ async function cargarEntrenadores() {
     const lista = document.getElementById("lista-entrenadores");
     lista.innerHTML = "";
 
-    if (entrenadores.length === 0) {
+    if (!entrenadores || entrenadores.length === 0) {
         lista.innerHTML = "<p style='color: var(--text-muted); text-align: center;'>No se encontraron entrenadores.</p>";
         document.getElementById("btn-prev").disabled = true;
         document.getElementById("btn-next").disabled = true;
@@ -146,7 +143,6 @@ async function cargarEntrenadores() {
 
     entrenadores.forEach(e => {
         const nombrePokemon = e.pokemon ? e.pokemon.toLowerCase() : "pikachu";
-        // ✅ CORRECCIÓN: Usamos el servidor de Showdown que sí acepta nombres de texto
         const spriteAnimado = `https://play.pokemonshowdown.com/sprites/ani/${nombrePokemon}.gif`;
 
         lista.innerHTML += `
@@ -162,7 +158,7 @@ async function cargarEntrenadores() {
                     </div>
                 </div>
                 <div>
-                    <button class="btn btn-delete" onclick="eliminarEntrenador(${e.id})">Borrar</button>
+                    <button type="button" class="btn btn-delete" onclick="eliminarEntrenador(${e.id})">Borrar</button>
                 </div>
             </div>
         </article>`;
@@ -170,9 +166,7 @@ async function cargarEntrenadores() {
 
     document.getElementById("indicador-pagina").innerText = `Página ${paginaActual}`;
     document.getElementById("btn-prev").disabled = paginaActual === 1;
-
-    const totalMostradosHastaAhora = paginaActual * LIMITE_POR_PAGINA;
-    document.getElementById("btn-next").disabled = totalMostradosHastaAhora >= total;
+    document.getElementById("btn-next").disabled = (paginaActual * LIMITE_POR_PAGINA) >= total;
 }
 
 function cambiarPagina(direccion) {
@@ -188,8 +182,10 @@ async function refrescarBaseDatos() {
     btnRefresh.disabled = true;
 
     paginaActual = 1;
-    document.getElementById("buscador-entrenadores").value = "";
     busquedaActual = "";
+
+    const buscador = document.getElementById("buscador-entrenadores");
+    if (buscador) buscador.value = "";
 
     await cargarEntrenadores();
 
@@ -217,40 +213,62 @@ async function crearEntrenador() {
         return;
     }
 
-    const respuesta = await fetch(`${API_URL}/entrenadores`, {
-        method: "POST",
-        headers: obtenerHeadersVIP(),
-        body: JSON.stringify({ nombre, ciudad, medalla, pokemon })
-    });
+    try {
+        const respuesta = await fetch(`${API_URL}/entrenadores`, {
+            method: "POST",
+            headers: obtenerHeadersVIP(),
+            body: JSON.stringify({ nombre, ciudad, medalla, pokemon })
+        });
 
-    if (respuesta.ok) {
-        cargarEntrenadores();
-        document.getElementById("nombre").value = "";
-        document.getElementById("ciudad").value = "";
-        document.getElementById("pokemon").value = "";
-    } else {
-        alert("🚨 No tienes permiso o la sesión expiró.");
-        cerrarSesion();
+        if (respuesta.ok) {
+            cargarEntrenadores();
+            document.getElementById("nombre").value = "";
+        } else if (respuesta.status === 401) {
+            alert("🚨 La sesión expiró.");
+            cerrarSesion();
+        } else {
+            const error = await respuesta.json();
+            alert("❌ Error: " + (error.detail || "No se pudo registrar"));
+        }
+    } catch (e) {
+        console.error(e);
     }
 }
 
 async function eliminarEntrenador(id) {
+    if (!confirm("¿Estás seguro de borrar a este entrenador?")) return;
+
     const respuesta = await fetch(`${API_URL}/entrenadores/${id}`, {
         method: "DELETE",
         headers: obtenerHeadersVIP()
     });
-    if (respuesta.ok) cargarEntrenadores();
-    else alert("🚨 Error: Permiso denegado.");
+
+    if (respuesta.ok) {
+        cargarEntrenadores();
+    } else if (respuesta.status === 401) {
+        alert("🚨 La sesión expiró.");
+        cerrarSesion();
+    } else {
+        alert("🚨 Error: Permiso denegado.");
+    }
 }
 
 async function eliminarTodos() {
     if (!confirm("¿Estás seguro de que quieres borrar TODA la base de datos?")) return;
+
     const respuesta = await fetch(`${API_URL}/eliminar-todo`, {
         method: "DELETE",
         headers: obtenerHeadersVIP()
     });
-    if (respuesta.ok) cargarEntrenadores();
-    else alert("🚨 Error: Permiso denegado.");
+
+    if (respuesta.ok) {
+        cargarEntrenadores();
+    } else if (respuesta.status === 401) {
+        alert("🚨 La sesión expiró.");
+        cerrarSesion();
+    } else {
+        alert("🚨 Error: Permiso denegado.");
+    }
 }
 
 // ==========================================
@@ -276,7 +294,7 @@ async function cargarUsuarios() {
                         <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">ID de Sistema: ${u.id}</p>
                     </div>
                     <div>
-                        <button class="btn btn-delete" onclick="eliminarUsuario(${u.id})">Expulsar 🗑️</button>
+                        <button type="button" class="btn btn-delete" onclick="eliminarUsuario(${u.id})">Expulsar 🗑️</button>
                     </div>
                 </div>
             </article>`;
@@ -297,6 +315,8 @@ async function eliminarUsuario(id) {
     if (respuesta.ok) {
         alert("¡Usuario eliminado con éxito!");
         cargarUsuarios();
+    } else if (respuesta.status === 401) {
+        cerrarSesion();
     } else {
         const error = await respuesta.json();
         alert(`❌ No se pudo borrar: ${error.detail}`);
@@ -315,8 +335,8 @@ window.onload = () => {
         cargarUsuarios();
     }
 
+    // Seguridad estricta: borra el token al recargar manualmente
     window.addEventListener("beforeunload", () => {
         localStorage.removeItem("tokenVIP");
     });
 };
-

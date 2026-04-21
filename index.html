@@ -114,7 +114,7 @@
                             </label>
                         </div>
                     </div>
-                    <button class="btn btn-save" onclick="crearEntrenador()">Guardar Entrenador</button>
+                    <button type="button" class="btn btn-save" onclick="crearEntrenador()">Guardar Entrenador</button>
                 </section>
 
 
@@ -144,12 +144,39 @@
                     </header>
 
                     <search style="display: block; margin-bottom: 20px;">
-                        <div class="form-group">
-                            <label for="buscador-entrenadores" class="sr-only" style="display: none;">Buscar
-                                entrenador</label>
+                        <div class="form-group" style="margin-bottom: 10px;">
                             <input type="search" id="buscador-entrenadores"
                                 placeholder="🔍 Buscar entrenador por nombre..." class="select-moderno"
                                 onkeyup="buscarEntrenador()" aria-label="Escribe el nombre del entrenador a buscar">
+                        </div>
+
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+
+                            <select id="filtro-ciudad" class="select-moderno" onchange="buscarEntrenador()">
+                                <option value="">🌍 Todas las Ciudades</option>
+                                <option value="Pueblo Paleta">Pueblo Paleta</option>
+                                <option value="Ciudad Verde">Ciudad Verde</option>
+                                <option value="Ciudad Plateada">Ciudad Plateada</option>
+                                <option value="Ciudad Celeste">Ciudad Celeste</option>
+                            </select>
+
+                            <select id="filtro-pokemon" class="select-moderno" onchange="buscarEntrenador()">
+                                <option value="">🐾 Todos los Pokémon</option>
+                                <option value="bulbasaur">Bulbasaur</option>
+                                <option value="charmander">Charmander</option>
+                                <option value="squirtle">Squirtle</option>
+                                <option value="pikachu">Pikachu</option>
+                                <option value="eevee">Eevee</option>
+                                <option value="zubat">Zubat</option>
+                            </select>
+
+                            <select id="filtro-medalla" class="select-moderno" onchange="buscarEntrenador()">
+                                <option value="">🏅 Todos los Rangos</option>
+                                <option value="true">Solo Campeones</option>
+                                <option value="false">Solo Novatos</option>
+                            </select>
+
                         </div>
                     </search>
 

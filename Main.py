@@ -113,19 +113,37 @@ def inicio():
     return {"mensaje": "API Segura Activa"}
 
 @app.get("/entrenadores")
-def ver_todos(skip: int = 0, limit: int = 5, search: Optional[str] = None, db: Session = Depends(get_db)):
+def ver_todos(
+    skip: int = 0, 
+    limit: int = 5, 
+    search: Optional[str] = None,
+    ciudad: Optional[str] = None,     # Nuevo
+    pokemon: Optional[str] = None,   # Nuevo
+    medalla: Optional[bool] = None,  # Nuevo
+    db: Session = Depends(get_db)
+):
     query = db.query(models.EntrenadorDB)
     
+    # Filtro por nombre (el que ya tenías)
     if search:
         query = query.filter(models.EntrenadorDB.nombre.ilike(f"%{search}%"))
+    
+    # Filtro por Ciudad
+    if ciudad:
+        query = query.filter(models.EntrenadorDB.ciudad == ciudad)
+        
+    # Filtro por Pokémon
+    if pokemon:
+        query = query.filter(models.EntrenadorDB.pokemon == pokemon)
+        
+    # Filtro por Medalla (Novato vs Campeón)
+    if medalla is not None:
+        query = query.filter(models.EntrenadorDB.medalla == medalla)
         
     total_registros = query.count()
     entrenadores = query.offset(skip).limit(limit).all()
     
-    return {
-        "total": total_registros,
-        "entrenadores": entrenadores
-    }
+    return {"total": total_registros, "entrenadores": entrenadores}
 
 @app.post("/entrenadores")
 def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
