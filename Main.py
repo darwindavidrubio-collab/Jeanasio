@@ -242,3 +242,30 @@ def cambiar_password_usuario(usuario_id: int, datos: NuevaPasswordSchema, db: Se
     
     return {"mensaje": f"La contraseña de {usuario_a_editar.username} ha sido actualizada con éxito."
     }
+
+
+# 8. LA SEMILLA DE DATOS (Para pruebas)
+import random
+
+@app.post("/entrenadores/seed")
+def sembrar_entrenadores(db: Session = Depends(get_db)):
+    ciudades = ["Pueblo Paleta", "Ciudad Verde", "Ciudad Plateada", "Ciudad Celeste"]
+    pokemones = ["pikachu", "charmander", "squirtle", "bulbasaur", "eevee", "zubat"]
+    
+    entrenadores_creados = []
+    
+    for i in range(1, 21):
+        nuevo_entrenador = models.EntrenadorDB(
+            nombre=f"Entrenador de Prueba {random.randint(1000, 9999)}", # Nombre único
+            ciudad=random.choice(ciudades),
+            pokemon=random.choice(pokemones),
+            medalla=random.choice([True, False]),
+            poder_total=random.randint(100, 5000),
+            mensaje_medalla="¡Generado automáticamente!"
+        )
+        db.add(nuevo_entrenador)
+        entrenadores_creados.append(nuevo_entrenador)
+    
+    db.commit()
+    return {"mensaje": f"¡Bóveda sembrada! Se crearon {len(entrenadores_creados)} entrenadores de prueba."}
+    
