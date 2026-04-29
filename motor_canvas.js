@@ -24,7 +24,7 @@ class EnergyNode {
         this.vx = (Math.random() - 0.5) * 2;
         this.vy = (Math.random() - 0.5) * 2;
         this.radius = Math.random() * 2 + 1;
-        this.color = Math.random() > 0.2 ? '#ffcc00' : '#00ffff';
+        this.color = Math.random() > 0.3 ? '#8b5cf6' : '#06d6a0'; // Violet and Cyan
     }
 
     update() {
@@ -71,7 +71,7 @@ resize();
 
 // 4. BUCLE DE RENDERIZADO PRINCIPAL (60 FPS)
 function animate() {
-    ctx.fillStyle = '#0a0a0f';
+    ctx.fillStyle = '#0a0a12'; // Base oscura premium
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     nodes.forEach(node => {
@@ -89,7 +89,7 @@ function animate() {
             if (distance < 120) {
                 ctx.beginPath();
                 const opacity = 1 - (distance / 120);
-                ctx.strokeStyle = `rgba(0, 255, 255, ${opacity * 0.4})`;
+                ctx.strokeStyle = `rgba(139, 92, 246, ${opacity * 0.4})`; // Violet
                 ctx.lineWidth = 0.8;
                 ctx.moveTo(nodes[i].x, nodes[i].y);
                 ctx.lineTo(nodes[j].x, nodes[j].y);
@@ -105,10 +105,10 @@ function animate() {
         if (distanceMouse < 180) {
             ctx.beginPath();
             const intensity = 1 - (distanceMouse / 180);
-            ctx.strokeStyle = `rgba(255, 204, 0, ${intensity})`;
+            ctx.strokeStyle = `rgba(6, 214, 160, ${intensity})`; // Cyan
             ctx.lineWidth = intensity * 2.5;
             ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ffcc00';
+            ctx.shadowColor = '#06d6a0'; // Cyan
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(mouse.x, mouse.y);
             ctx.stroke();

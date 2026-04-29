@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
@@ -8,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 import bcrypt
 from typing import Optional
+import random
 
 import models
 from database import SessionLocal, engine
@@ -110,7 +113,8 @@ def iniciar_sesion(form_data: OAuth2PasswordRequestForm = Depends(), db: Session
 # 6. RUTAS DEL GIMNASIO PROTEGIDAS
 @app.get("/")
 def inicio():
-    return {"mensaje": "API Segura Activa"}
+    return FileResponse("index.html")
+
 
 @app.get("/entrenadores")
 def ver_todos(
@@ -145,20 +149,69 @@ def ver_todos(
     
     return {"total": total_registros, "entrenadores": entrenadores}
 
+# 1. Definimos los rangos de poder por especie y evolución
+# Escala de Poder Centralizada (Min: 10 - Max: 10.000)
+POKEMON_POWER_DATA = {
+    # --- INICIALES CLÁSICOS ---
+    "bulbasaur": {"min": 10, "max": 3000, "label": "Básico"},
+    "ivysaur": {"min": 3001, "max": 7000, "label": "Evolución 1"},
+    "venusaur": {"min": 7001, "max": 10000, "label": "Evolución Final"},
+    
+    "charmander": {"min": 10, "max": 3000, "label": "Básico"},
+    "charmeleon": {"min": 3001, "max": 7000, "label": "Evolución 1"},
+    "charizard": {"min": 7001, "max": 10000, "label": "Evolución Final"},
+    
+    "squirtle": {"min": 10, "max": 3000, "label": "Básico"},
+    "wartortle": {"min": 3001, "max": 7000, "label": "Evolución 1"},
+    "blastoise": {"min": 7001, "max": 10000, "label": "Evolución Final"},
+
+    # --- POKÉMON ANTIGUOS Y ESPECIALES ---
+    "pikachu": {"min": 10, "max": 5000, "label": "Básico"},
+    "raichu": {"min": 5001, "max": 10000, "label": "Evolución Final"},
+    
+    "eevee": {"min": 10, "max": 4000, "label": "Básico"},
+    "vaporeon": {"min": 4001, "max": 10000, "label": "Evolución Final"},
+    "jolteon": {"min": 4001, "max": 10000, "label": "Evolución Final"},
+    "flareon": {"min": 4001, "max": 10000, "label": "Evolución Final"},
+
+    "zubat": {"min": 10, "max": 3000, "label": "Básico"},
+    "golbat": {"min": 3001, "max": 7000, "label": "Evolución 1"},
+    "crobat": {"min": 7001, "max": 10000, "label": "Evolución Final"},
+
+    "gastly": {"min": 10, "max": 3000, "label": "Básico"},
+    "haunter": {"min": 3001, "max": 7000, "label": "Evolución 1"},
+    "gengar": {"min": 7001, "max": 10000, "label": "Evolución Final"},
+
+    "dratini": {"min": 10, "max": 3000, "label": "Básico"},
+    "dragonair": {"min": 3001, "max": 7000, "label": "Evolución 1"},
+    "dragonite": {"min": 7001, "max": 10000, "label": "Evolución Final"}
+}
+
 @app.post("/entrenadores")
 def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
+    # Lógica de poder basada en evolución (como definimos antes)
+    pokemon_key = entrenador.pokemon.lower()
+    stats = POKEMON_POWER_DATA.get(pokemon_key, {"min": 10, "max": 10000, "label": "Desconocido"})
+    poder_calculado = random.randint(stats["min"], stats["max"])
+    
     nuevo_entrenador = models.EntrenadorDB(
         nombre=entrenador.nombre, 
         ciudad=entrenador.ciudad, 
         medalla=entrenador.medalla,
         pokemon=entrenador.pokemon, 
-        poder_total=1000 if entrenador.medalla else 0,
-        mensaje_medalla="¡Felicidades!" if entrenador.medalla else "Sigue intentando"
+        poder_total=poder_calculado,
+        mensaje_medalla=f"Nivel de poder: {stats['label']}"
     )
-    db.add(nuevo_entrenador)
-    db.commit()
-    db.refresh(nuevo_entrenador)
-    return nuevo_entrenador
+    
+    try:
+        db.add(nuevo_entrenador)
+        db.commit()
+        db.refresh(nuevo_entrenador)
+        return nuevo_entrenador
+    except IntegrityError:
+        db.rollback()
+        # Aquí lanzamos el error amigable que leerá el frontend
+        raise HTTPException(status_code=400, detail="Entrenador ya registrado")
 
 @app.put("/entrenadores/{entrenador_id}")
 def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
@@ -268,4 +321,7 @@ def sembrar_entrenadores(db: Session = Depends(get_db)):
     
     db.commit()
     return {"mensaje": f"¡Bóveda sembrada! Se crearon {len(entrenadores_creados)} entrenadores de prueba."}
-    
+
+# Servir archivos estáticos (CSS, JS, Imágenes, Música)
+# IMPORTANTE: Debe estar AL FINAL, después de todas las rutas de API
+app.mount("/", StaticFiles(directory=".", html=True), name="static")

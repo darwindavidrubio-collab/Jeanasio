@@ -15,7 +15,7 @@
         <source src="Musica/Cynthia.mp3" type="audio/mpeg" preload="auto">
     </audio>
 
-    <div class="container">
+    <div class="container fade-in">
         <header>
             <h1>Jeanasio de Darwin y Otaku</h1>
             <figure class="header-center" style="margin: 0;">
@@ -39,7 +39,7 @@
         </header>
 
         <main>
-            <section id="login-section" aria-labelledby="login-title">
+            <section id="login-section" class="glass-card" aria-labelledby="login-title">
                 <h2 id="login-title">Acceso Restringido (VIP)</h2>
                 <form onsubmit="event.preventDefault(); iniciarSesion();">
                     <div class="form-group">
@@ -49,8 +49,20 @@
                     </div>
                     <div class="form-group">
                         <label for="login-password">Contraseña</label>
-                        <input type="password" id="login-password" required placeholder="Tu clave secreta"
-                            autocomplete="current-password">
+                        <div class="password-container">
+                            <input type="password" id="login-password" required placeholder="Tu clave secreta"
+                                autocomplete="current-password">
+                            <button type="button" id="toggle-password-btn" class="toggle-password"
+                                onclick="togglePassword()" aria-label="Mostrar contraseña">
+                                <!-- Ícono de Ojo Cerrado por defecto (porque es tipo password) -->
+                                <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M2 12s5 6 10 6 10-6 10-6" />
+                                    <path
+                                        d="M12 18v3 M8.5 17.5l-2 2.5 M15.5 17.5l2 2.5 M5.5 16l-2.5 2 M18.5 16l2.5 2 M3 13.5l-2.5 1.5 M21 13.5l2.5 1.5" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-save">Desbloquear Gimnasio</button>
                 </form>
@@ -60,7 +72,7 @@
 
             <div id="gym-section" style="display: none;">
 
-                <section id="registro-entrenadores" aria-labelledby="registro-title">
+                <section id="registro-entrenadores" class="glass-card" aria-labelledby="registro-title">
                     <h2 id="registro-title">Registrar Entrenador</h2>
                     <div class="form-group">
                         <label for="nombre">Nombre Completo</label>
@@ -80,23 +92,55 @@
 
                     <div class="form-group">
                         <label for="pokemon" id="label-pokemon">Pokémon Inicial (Socio)</label>
-                        <select id="pokemon" class="select-moderno" required aria-required="true"
-                            aria-labelledby="label-pokemon">
+                        <select id="pokemon" class="select-moderno" required>
                             <option value="" disabled selected>Elige a tu compañero...</option>
 
-                            <optgroup label="Iniciales Clásicos">
+                            <optgroup label="Línea Bulbasaur">
                                 <option value="bulbasaur">Bulbasaur 🍃</option>
-                                <option value="charmander">Charmander 🔥</option>
-                                <option value="squirtle">Squirtle 💧</option>
+                                <option value="ivysaur">Ivysaur 🌿</option>
+                                <option value="venusaur">Venusaur 🌳</option>
                             </optgroup>
 
-                            <optgroup label="Especiales">
+                            <optgroup label="Línea Charmander">
+                                <option value="charmander">Charmander 🔥</option>
+                                <option value="charmeleon">Charmeleon 💥</option>
+                                <option value="charizard">Charizard 🐲</option>
+                            </optgroup>
+
+                            <optgroup label="Línea Squirtle">
+                                <option value="squirtle">Squirtle 💧</option>
+                                <option value="wartortle">Wartortle 🌊</option>
+                                <option value="blastoise">Blastoise 🛡️</option>
+                            </optgroup>
+
+                            <optgroup label="Otros">
                                 <option value="pikachu">Pikachu ⚡</option>
-                                <option value="eevee">Eevee 🌟</option>
+                                <option value="raichu">Raichu ⚡⚡</option>
                             </optgroup>
 
                             <optgroup label="Exclusivos de la Cueva">
                                 <option value="zubat">Zubat 🦇</option>
+                                <option value="golbat">Golbat 🦇🩸</option>
+                                <option value="crobat">Crobat 🦇💨</option>
+                            </optgroup>
+
+                            <optgroup label="Línea Eevee">
+                                <option value="eevee">Eevee 🐾</option>
+                                <option value="vaporeon">Vaporeon 💧</option>
+                                <option value="jolteon">Jolteon ⚡⚡</option>
+                                <option value="flareon">Flareon 🔥🔥</option>
+                            </optgroup>
+
+                            <optgroup label="Línea Gastly">
+                                <option value="gastly">Gastly 👻</option>
+                                <option value="haunter">Haunter 👻👻</option>
+                                <option value="gengar">Gengar 😈</option>
+                            </optgroup>
+
+                            <optgroup label="Línea Dratini">
+                                <option value="dratini">Dratini 🐉</option>
+                                <option value="dragonair">Dragonair 🐉🐉</option>
+                                <option value="dragonite">Dragonite 🐉🐉🐉</option>
                             </optgroup>
                         </select>
                     </div>
@@ -118,9 +162,9 @@
                 </section>
 
 
-                <section id="base-datos" aria-labelledby="db-title">
+                <section id="base-datos" class="glass-card" aria-labelledby="db-title">
                     <header
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: none; padding-bottom: 0;">
                         <h2 id="db-title" style="margin: 0;">Base de Datos</h2>
 
                         <menu aria-label="Controles de la base de datos"
@@ -150,7 +194,7 @@
                                 onkeyup="buscarEntrenador()" aria-label="Escribe el nombre del entrenador a buscar">
                         </div>
 
-                        <div
+                        <div class="filters-grid"
                             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
 
                             <select id="filtro-ciudad" class="select-moderno" onchange="buscarEntrenador()">
@@ -206,10 +250,10 @@
                 </section>
 
 
-                <aside id="admin-panel"
-                    style="display: none; border-color: #fbbf24; box-shadow: 0 4px 20px rgba(251, 191, 36, 0.1);"
+                <aside id="admin-panel" class="glass-card"
+                    style="display: none; border-color: var(--warning); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1);"
                     aria-labelledby="admin-title">
-                    <h2 id="admin-title" style="color: #fbbf24;">👑 Bóveda Secreta (Panel de Dios)</h2>
+                    <h2 id="admin-title" style="color: var(--warning);">👑 Bóveda Secreta (Panel de Dios)</h2>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">Control total de
                         usuarios registrados en el sistema. (Vista exclusiva de Darwin)</p>
                     <div id="lista-usuarios"></div>
@@ -219,8 +263,23 @@
         </main>
 
         <footer>
-            <small>&copy; 2026 - Darwin - Panel de Control Pokémon Full-Stack</small>
+            <small>&copy; 2026 - Darwin - Panel de Control Pokémon Full-Stack 💖</small>
         </footer>
+    </div>
+
+    <!-- Contenedor para Toasts -->
+    <div id="toast-container"></div>
+
+    <!-- Contenedor para Modales Custom -->
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="modal-title">Atención</h3>
+            <p id="modal-message">¿Estás seguro?</p>
+            <div class="modal-buttons">
+                <button id="modal-cancel" class="btn btn-cancel">Cancelar</button>
+                <button id="modal-confirm" class="btn btn-confirm">Aceptar</button>
+            </div>
+        </div>
     </div>
 
     <script src="usual.js"></script>
