@@ -785,3 +785,543 @@ footer {
     z-index: -1;
     pointer-events: none;
 }
+
+/* ==========================================
+ * SISTEMA DE COMBATE (ARENA 3D)
+ * ========================================== */
+
+.battle-modal {
+    width: 90%;
+    max-width: 800px;
+    height: 80vh;
+    background: radial-gradient(circle at center, #1a1b2e 0%, #0a0a0f 100%);
+    border: 2px solid var(--warning);
+    box-shadow: 0 0 50px rgba(245, 158, 11, 0.2);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.1s;
+}
+
+.btn-close-duel {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 1.2rem;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 50000;
+}
+
+/* HUD Top */
+.battle-hud {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 20px;
+    z-index: 100;
+}
+
+.hud-box {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--border);
+    padding: 10px 15px;
+    border-radius: 10px;
+    width: 40%;
+}
+
+.hud-name {
+    font-weight: bold;
+    color: var(--text-main);
+    margin-bottom: 5px;
+    text-shadow: 0 0 5px var(--accent);
+}
+
+.hud-hp-bar {
+    width: 100%;
+    height: 12px;
+    background: #222;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #444;
+    display: flex;
+}
+
+.hp-fill {
+    height: 100%;
+    background-color: #4ade80;
+    /* verde */
+    width: 100%;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+}
+
+.hud-hp-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* Arena 3D */
+.battle-arena {
+    flex: 1;
+    position: relative;
+    perspective: 1200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.arena-floor {
+    position: absolute;
+    width: 120%;
+    height: 250px;
+    bottom: -50px;
+    background: #e2d2a4;
+    /* Color arena */
+    border: 3px solid #3b82f6;
+    /* Líneas azules */
+    transform: rotateX(75deg);
+    transform-origin: bottom;
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5) inset;
+    background-image:
+        linear-gradient(rgba(59, 130, 246, 0.3) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(59, 130, 246, 0.3) 2px, transparent 2px);
+    background-size: 50px 50px;
+}
+
+/* Círculo central pokebola en el piso */
+.arena-floor::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 150px;
+    height: 150px;
+    border: 4px solid #3b82f6;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.arena-floor::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: #3b82f6;
+    transform: translateY(-50%);
+}
+
+.sprite-container {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.battle-sprite {
+    height: 100%;
+    image-rendering: pixelated;
+    filter: drop-shadow(0px 10px 10px rgba(0, 0, 0, 0.5));
+    transform-origin: bottom center;
+}
+
+.dead-sprite {
+    animation: fade-die 1s forwards !important;
+}
+
+@keyframes fade-die {
+    0% {
+        transform: rotate(0) scaleY(1);
+        opacity: 1;
+        filter: grayscale(0);
+    }
+
+    50% {
+        transform: rotate(90deg) scaleY(0.5);
+        opacity: 0.5;
+        filter: grayscale(1);
+    }
+
+    100% {
+        transform: rotate(90deg) scaleY(0.2);
+        opacity: 0;
+        filter: grayscale(1);
+    }
+}
+
+/* Daño y animaciones */
+@keyframes hit-glitch {
+    0% {
+        filter: brightness(1) sepia(0);
+        transform: translateX(0);
+    }
+
+    15% {
+        filter: brightness(4) sepia(1) hue-rotate(-50deg);
+        transform: translateX(-15px);
+    }
+
+    30% {
+        filter: brightness(3) sepia(1) hue-rotate(50deg) saturate(3);
+        transform: translateX(12px);
+    }
+
+    45% {
+        filter: brightness(2) sepia(1) hue-rotate(-20deg);
+        transform: translateX(-8px);
+    }
+
+    60% {
+        filter: brightness(2) saturate(0);
+        transform: translateX(5px);
+    }
+
+    100% {
+        filter: brightness(1) sepia(0);
+        transform: translateX(0);
+    }
+}
+
+.damage-floater {
+    position: absolute;
+    color: #ef4444;
+    font-weight: 900;
+    font-size: 1.8rem;
+    text-shadow: 0 0 5px black, 0 0 10px red;
+    animation: float-up 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.crit-floater {
+    color: #fde047;
+    font-size: 2.5rem;
+    text-shadow: 0 0 10px black, 0 0 20px orange;
+    animation: float-up-crit 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes float-up {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.5);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(-20px) scale(1.2);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-60px) scale(1);
+    }
+}
+
+@keyframes float-up-crit {
+    0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.5) rotate(-10deg);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(-30px) scale(1.5) rotate(10deg);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translateY(-70px) scale(1.2) rotate(-5deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-90px) scale(1) rotate(0);
+    }
+}
+
+/* Log de batalla */
+.battle-log {
+    height: 120px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    margin-top: auto;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+}
+
+.battle-log p {
+    margin: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 2px;
+}
+
+.duel-winner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 20px 40px;
+    border-radius: 10px;
+    border: 2px solid var(--warning);
+    text-align: center;
+    z-index: 200;
+    box-shadow: 0 0 50px rgba(245, 158, 11, 0.5);
+}
+
+/* Efecto especial para eliminación de nivel Dios (>7000) */
+.interface-glitch {
+    animation: card-glitch 0.4s infinite !important;
+    border-color: #ef4444 !important;
+}
+
+@keyframes card-glitch {
+    0% {
+        transform: translate(0) skew(0deg);
+        filter: drop-shadow(0 0 10px red) sepia(1) hue-rotate(-50deg);
+    }
+
+    20% {
+        transform: translate(-5px, 2px) skew(2deg);
+        filter: drop-shadow(-5px 0 0 cyan) sepia(0);
+    }
+
+    40% {
+        transform: translate(5px, -2px) skew(-2deg);
+        filter: drop-shadow(5px 0 0 red) saturate(3);
+    }
+
+    60% {
+        transform: translate(-2px, 5px) skew(1deg);
+        filter: drop-shadow(0 -5px 0 lime) hue-rotate(90deg);
+    }
+
+    80% {
+        transform: translate(2px, -5px) skew(-1deg);
+        filter: drop-shadow(0 5px 0 yellow) invert(0.8);
+    }
+
+    100% {
+        transform: translate(0) skew(0deg);
+        filter: drop-shadow(0 0 0 black);
+    }
+}
+
+/* ==========================================
+ * MEJORAS DE COMBATE ÉPICO (GBA STYLE)
+ * ========================================== */
+
+/* Caja de mensaje de ataque (estilo Pokémon Esmeralda) */
+#battle-message-box {
+    position: absolute;
+    bottom: 20px;
+    left: 5%;
+    width: 90%;
+    background: #f8f8f8;
+    border: 6px solid #475569;
+    border-radius: 12px;
+    padding: 15px 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5), inset 0 0 0 4px #e2e8f0, inset 0 0 0 6px #94a3b8;
+    z-index: 1000;
+    display: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #1e293b;
+    text-transform: uppercase;
+    animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Shake de la Barra de Vida */
+.hp-bar-shake {
+    animation: hpShake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+@keyframes hpShake {
+
+    10%,
+    90% {
+        transform: translate3d(-1px, 0, 0);
+    }
+
+    20%,
+    80% {
+        transform: translate3d(2px, 0, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-4px, 0, 0);
+    }
+
+    40%,
+    60% {
+        transform: translate3d(4px, 0, 0);
+    }
+}
+
+/* Flash Blanco de Daño */
+.white-flash {
+    animation: whiteFlashAnim 0.15s ease-out;
+}
+
+@keyframes whiteFlashAnim {
+    0% {
+        filter: brightness(1);
+    }
+
+    50% {
+        filter: brightness(100) saturate(0) opacity(0.8);
+        transform: translateX(-5px);
+    }
+
+    100% {
+        filter: brightness(1);
+    }
+}
+
+/* Glow rojo de Salud Baja */
+.low-hp-glow {
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.8)) !important;
+    animation: pulseGlow 1s infinite alternate;
+}
+
+@keyframes pulseGlow {
+    0% {
+        filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+    }
+
+    100% {
+        filter: drop-shadow(0 0 15px rgba(239, 68, 68, 1));
+    }
+}
+
+/* Overlay Cuenta Regresiva */
+#countdown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 5000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+#countdown-text {
+    font-size: 8rem;
+    color: #facc15;
+    text-shadow: 0 0 30px #eab308, 0 0 10px #fff;
+    margin: 0;
+    animation: countAnim 0.8s ease-in-out;
+}
+
+@keyframes countAnim {
+    0% {
+        transform: scale(3);
+        opacity: 0;
+    }
+
+    30% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    80% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* Pantalla Ganador Full Screen */
+.duel-winner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+}
+
+.winner-content {
+    text-align: center;
+    animation: zoomInFade 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.winner-title {
+    color: #facc15;
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    text-shadow: 0 0 20px #eab308, 0 0 40px #ca8a04;
+    animation: pulseScale 1.5s infinite alternate;
+}
+
+#winner-sprite {
+    height: 180px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 20px 20px rgba(250, 204, 21, 0.3));
+    margin-bottom: 20px;
+}
+
+@keyframes zoomInFade {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulseScale {
+    0% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(1.05);
+    }
+}

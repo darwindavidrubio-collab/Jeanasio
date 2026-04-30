@@ -3,7 +3,7 @@ const API_URL = "https://jeanasio.onrender.com";
 // "http://127.0.0.1:8000" para local 
 
 let paginaActual = 1;
-const LIMITE_POR_PAGINA = 8;
+const LIMITE_POR_PAGINA = 5;
 let busquedaActual = "";
 
 // ==========================================
@@ -342,7 +342,7 @@ async function cargarEntrenadores() {
                 : `<div class="progress-bar" style="width: ${porcentaje}%;"></div>`;
 
             lista.innerHTML += `
-            <article class="fade-in" style="animation-delay: ${index * 0.05}s; border-left: 4px solid ${colorBorde}; background: rgba(10, 10, 18, 0.4);">
+            <article id="card-${e.id}" class="fade-in" style="animation-delay: ${index * 0.05}s; border-left: 4px solid ${colorBorde}; background: rgba(10, 10, 18, 0.4);">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;" class="card-content">
                     <div style="display: flex; align-items: center; gap: 20px;">
                         <img src="${spriteAnimado}" alt="${nombrePokemon}" style="height: 60px; image-rendering: pixelated; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
@@ -361,8 +361,11 @@ async function cargarEntrenadores() {
                             </div>
                         </div>
                     </div>
-                    <div class="card-actions">
-                        <button type="button" class="btn btn-delete" onclick="eliminarEntrenador(${e.id})">Borrar 🗑️</button>
+                    <div class="card-actions" style="display: flex; flex-direction: column; gap: 8px; min-width: 130px;">
+                        <button type="button" class="btn" style="background: rgba(6, 214, 160, 0.1); border: 1px solid var(--accent); color: var(--accent); font-size: 0.85rem; padding: 6px 10px;" onclick="prepararDuelo(${e.id}, '${e.nombre}', '${nombrePokemon}', ${poder})">⚔️ Duelo</button>
+                        <button type="button" class="btn" style="background: rgba(56, 189, 248, 0.1); border: 1px solid #38bdf8; color: #38bdf8; font-size: 0.85rem; padding: 6px 10px;" onclick="entrenarEntrenador(${e.id})">⬆️ Entrenar</button>
+                        <button type="button" class="btn" style="background: rgba(253, 224, 71, 0.1); border: 1px solid #fde047; color: #fde047; font-size: 0.85rem; padding: 6px 10px;" onclick="evolucionarEntrenador(${e.id}, '${nombrePokemon}')">✨ Evolucionar</button>
+                        <button type="button" class="btn btn-delete" style="font-size: 0.85rem; padding: 6px 10px;" onclick="intentoEliminarEntrenador(${e.id}, ${poder})">Borrar 🗑️</button>
                     </div>
                 </div>
             </article>`;
@@ -447,7 +450,6 @@ async function crearEntrenador() {
             mostrarToast("La sesión expiró.", "error");
             cerrarSesion();
         } else if (respuesta.status === 400) {
-            // AQUÍ ATRAPAMOS EL ERROR 400 (DUPLICADO) DE MAIN.PY
             const error = await respuesta.json();
             mostrarToast("⚠️ " + error.detail, "warning");
         } else {
@@ -457,6 +459,19 @@ async function crearEntrenador() {
     } catch (e) {
         console.error(e);
         mostrarToast("Error de conexión al servidor.", "error");
+    }
+}
+
+function intentoEliminarEntrenador(id, poder) {
+    const card = document.getElementById(`card-${id}`);
+    if (poder > 7000 && card) {
+        card.classList.add("interface-glitch");
+        setTimeout(() => {
+            card.classList.remove("interface-glitch");
+            eliminarEntrenador(id);
+        }, 500); // Dar tiempo al glitch antes de mostrar modal
+    } else {
+        eliminarEntrenador(id);
     }
 }
 
@@ -483,6 +498,540 @@ async function eliminarEntrenador(id) {
         console.error(e);
     }
 }
+
+// ==========================================
+// NUEVAS FUNCIONES: ENTRENAR Y EVOLUCIONAR
+// ==========================================
+
+async function entrenarEntrenador(id) {
+    try {
+        const respuesta = await fetch(`${API_URL}/entrenadores/${id}/entrenar`, {
+            method: "PUT"
+        });
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarToast(data.mensaje, "success");
+            cargarEntrenadores();
+        } else {
+            mostrarToast(data.detail, "error");
+        }
+    } catch (err) {
+        mostrarToast("Error de conexión al entrenar", "error");
+    }
+}
+
+let eeveeTargetId = null;
+
+function evolucionarEntrenador(id, pokemonActual) {
+    if (pokemonActual.toLowerCase() === "eevee") {
+        eeveeTargetId = id;
+        document.getElementById("eevee-modal").classList.add("active");
+    } else {
+        ejecutarEvolucion(id, null);
+    }
+}
+
+function cerrarEeveeModal() {
+    document.getElementById("eevee-modal").classList.remove("active");
+    eeveeTargetId = null;
+}
+
+function confirmarEvolucionEevee(nuevaForma) {
+    if (eeveeTargetId) {
+        ejecutarEvolucion(eeveeTargetId, nuevaForma);
+        cerrarEeveeModal();
+    }
+}
+
+async function ejecutarEvolucion(id, evolucionForzada) {
+    try {
+        const bodyReq = evolucionForzada ? { evolucion_forzada: evolucionForzada } : {};
+
+        const respuesta = await fetch(`${API_URL}/entrenadores/${id}/evolucionar`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(bodyReq)
+        });
+
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarToast(data.mensaje, "success");
+            cargarEntrenadores();
+        } else {
+            mostrarToast(data.detail, "warning");
+        }
+    } catch (err) {
+        mostrarToast("Error de conexión al evolucionar", "error");
+    }
+}
+
+// ==========================================
+// MOTOR DE COMBATE 3D
+// ==========================================
+
+const POKEMON_POWER_DATA = {
+    "bulbasaur": { label: "Básico" }, "ivysaur": { label: "Evolución 1" }, "venusaur": { label: "Evolución Final" },
+    "charmander": { label: "Básico" }, "charmeleon": { label: "Evolución 1" }, "charizard": { label: "Evolución Final" },
+    "squirtle": { label: "Básico" }, "wartortle": { label: "Evolución 1" }, "blastoise": { label: "Evolución Final" },
+    "pikachu": { label: "Básico" }, "raichu": { label: "Evolución Final" },
+    "eevee": { label: "Básico" }, "vaporeon": { label: "Evolución Final" }, "jolteon": { label: "Evolución Final" }, "flareon": { label: "Evolución Final" },
+    "zubat": { label: "Básico" }, "golbat": { label: "Evolución 1" }, "crobat": { label: "Evolución Final" },
+    "gastly": { label: "Básico" }, "haunter": { label: "Evolución 1" }, "gengar": { label: "Evolución Final" },
+    "dratini": { label: "Básico" }, "dragonair": { label: "Evolución 1" }, "dragonite": { label: "Evolución Final" }
+};
+
+const POKEMON_ATAQUES = {
+    "bulbasaur": ["Látigo Cepa", "Hoja Afilada"], "ivysaur": ["Polvo Veneno", "Rayo Solar"], "venusaur": ["Planta Feroz", "Rayo Solar"],
+    "charmander": ["Ascuas", "Arañazo"], "charmeleon": ["Lanzallamas", "Garra Dragón"], "charizard": ["Llamarada", "Anillo Ígneo"],
+    "squirtle": ["Burbuja", "Pistola Agua"], "wartortle": ["Rayo Aurora", "Mordisco"], "blastoise": ["Hidrobomba", "Cabezazo"],
+    "pikachu": ["Impactrueno", "Ataque Rápido"], "raichu": ["Rayo", "Trueno"],
+    "eevee": ["Placaje", "Ataque Rápido"], "vaporeon": ["Rayo Aurora", "Hidropulso"], "jolteon": ["Rayo", "Onda Trueno"], "flareon": ["Giro Fuego", "Llamarada"],
+    "zubat": ["Chupavidas", "Supersónico"], "golbat": ["Mordisco", "Ataque Ala"], "crobat": ["Veneno X", "Tajo Aéreo"],
+    "gastly": ["Lengüetazo", "Rayo Confuso"], "haunter": ["Puño Sombra", "Tinieblas"], "gengar": ["Bola Sombra", "Come Sueños"],
+    "dratini": ["Ciclón", "Onda Trueno"], "dragonair": ["Carga Dragón", "Golpe Cuerpo"], "dragonite": ["Enfado", "Hiperrayo"]
+};
+
+let duelState = {
+    entrenadorA: null,
+    entrenadorB: null,
+    rounds: [],
+    timerId: null,
+    actions: [] // Cola de acciones secuenciales
+};
+
+async function prepararDuelo(id, nombre, pokemon, poder) {
+    duelState.entrenadorA = { id, nombre, pokemon, poder };
+
+    const rival = await seleccionarRival(id);
+    if (!rival) return;
+
+    duelState.entrenadorB = rival;
+
+    iniciarArena();
+}
+
+let rivalSelectionResolve = null;
+
+async function seleccionarRival(miId) {
+    try {
+        const respuesta = await fetch(`${API_URL}/entrenadores`);
+        const data = await respuesta.json();
+        const rivales = data.entrenadores.filter(e => e.id !== miId);
+
+        if (rivales.length === 0) {
+            mostrarToast("No hay otros entrenadores en la base de datos para luchar.", "warning");
+            return null;
+        }
+
+        // Mostrar el modal y construir la lista
+        const modal = document.getElementById("rival-modal");
+        const listaContenedor = document.getElementById("lista-rivales");
+        const buscadorInput = document.getElementById("buscador-rival-modal");
+
+        listaContenedor.innerHTML = "";
+        buscadorInput.value = ""; // Limpiar buscador previo
+
+        rivales.forEach(rival => {
+            const btn = document.createElement("button");
+            btn.className = "btn rival-btn";
+            btn.style.textAlign = "left";
+            btn.style.display = "flex";
+            btn.style.justifyContent = "space-between";
+            btn.style.alignItems = "center";
+            btn.style.background = "var(--bg-card)";
+            btn.style.border = "1px solid var(--border)";
+            btn.style.padding = "10px";
+            btn.style.color = "var(--text-main)"; // CORRECCIÓN: Letras blancas
+
+            // Guardamos datos en dataset para el buscador
+            btn.dataset.nombre = rival.nombre.toLowerCase();
+            btn.dataset.pokemon = rival.pokemon.toLowerCase();
+
+            const icono = POKEMON_EMOJIS[rival.pokemon.toLowerCase()] || '🐾';
+
+            btn.innerHTML = `
+                <span><strong>${rival.nombre}</strong> <span style="color:var(--text-muted);font-size:0.8rem;">(${rival.ciudad})</span></span>
+                <span>${icono} ${rival.pokemon.toUpperCase()} <span style="color:var(--warning);font-size:0.8rem;">[Poder: ${rival.poder_total}]</span></span>
+            `;
+
+            btn.onclick = () => {
+                // CORRECCIÓN: Resolver y cerrar limpiamente
+                document.getElementById("rival-modal").classList.remove("active");
+                if (rivalSelectionResolve) {
+                    const resolverLocal = rivalSelectionResolve;
+                    rivalSelectionResolve = null; // Limpiar global antes de resolver
+                    resolverLocal({
+                        id: rival.id,
+                        nombre: rival.nombre,
+                        pokemon: rival.pokemon.toLowerCase(),
+                        poder: rival.poder_total
+                    });
+                }
+            };
+
+            listaContenedor.appendChild(btn);
+        });
+
+        // Lógica del buscador en tiempo real
+        buscadorInput.oninput = (e) => {
+            const termino = e.target.value.toLowerCase();
+            const botones = listaContenedor.querySelectorAll('.rival-btn');
+
+            botones.forEach(btn => {
+                const coincideNombre = btn.dataset.nombre.includes(termino);
+                const coincidePokemon = btn.dataset.pokemon.includes(termino);
+
+                if (coincideNombre || coincidePokemon) {
+                    btn.style.display = "flex";
+                } else {
+                    btn.style.display = "none";
+                }
+            });
+        };
+
+        modal.classList.add("active");
+
+        return new Promise(resolve => {
+            rivalSelectionResolve = resolve;
+        });
+    } catch (e) {
+        mostrarToast("Error buscando rivales", "error");
+        return null;
+    }
+}
+
+function cerrarRivalModal() {
+    document.getElementById("rival-modal").classList.remove("active");
+    if (rivalSelectionResolve) {
+        // Resolve con null si se cancela manualmente para abortar el duelo
+        rivalSelectionResolve(null);
+        rivalSelectionResolve = null;
+    }
+}
+
+function iniciarArena() {
+    const modal = document.getElementById("duel-modal");
+    modal.classList.add("active");
+
+    const a = duelState.entrenadorA;
+    const b = duelState.entrenadorB;
+
+    const spriteA = document.getElementById("duel-sprite-a");
+    spriteA.src = `https://play.pokemonshowdown.com/sprites/ani-back/${a.pokemon}.gif`;
+    spriteA.onerror = function () {
+        this.src = `https://play.pokemonshowdown.com/sprites/ani/${a.pokemon}.gif`;
+        this.style.transform = "scaleX(-1)";
+    };
+
+    const spriteB = document.getElementById("duel-sprite-b");
+    spriteB.src = `https://play.pokemonshowdown.com/sprites/ani/${b.pokemon}.gif`;
+    spriteB.style.transform = "scaleX(1)";
+
+    document.getElementById("duel-name-a").innerText = `${a.nombre} (${a.pokemon.toUpperCase()})`;
+    document.getElementById("duel-name-b").innerText = `${b.nombre} (${b.pokemon.toUpperCase()})`;
+
+    document.getElementById("battle-log-content").innerHTML = "";
+    document.getElementById("duel-winner").style.display = "none";
+    document.getElementById("battle-message-box").style.display = "none";
+
+    // Resetear glow
+    document.getElementById("duel-sprite-a").classList.remove("low-hp-glow");
+    document.getElementById("duel-sprite-b").classList.remove("low-hp-glow");
+
+    simularCombate();
+    iniciarCuentaRegresiva();
+}
+
+function cerrarDuelo() {
+    document.getElementById("duel-modal").classList.remove("active");
+    if (duelState.timerId) clearInterval(duelState.timerId);
+
+    // Resetear sprites
+    document.getElementById("duel-sprite-a").style.filter = "none";
+    document.getElementById("duel-sprite-b").style.filter = "none";
+    document.getElementById("duel-sprite-a").classList.remove("dead-sprite");
+    document.getElementById("duel-sprite-b").classList.remove("dead-sprite");
+}
+
+function iniciarCuentaRegresiva() {
+    const overlay = document.getElementById("countdown-overlay");
+    const text = document.getElementById("countdown-text");
+    overlay.style.display = "flex";
+
+    let count = 3;
+    text.innerText = count;
+
+    const countInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            text.innerText = count;
+            text.style.animation = 'none';
+            text.offsetHeight;
+            text.style.animation = 'countAnim 0.8s ease-in-out';
+        } else if (count === 0) {
+            text.innerText = "¡COMBATE!";
+            text.style.animation = 'none';
+            text.offsetHeight;
+            text.style.animation = 'countAnim 0.8s ease-in-out';
+        } else {
+            clearInterval(countInterval);
+            overlay.style.display = "none";
+            reproducirCombate(duelState.actions);
+        }
+    }, 1000);
+}
+
+function simularCombate() {
+    const a = duelState.entrenadorA;
+    const b = duelState.entrenadorB;
+
+    const hpA_max = Math.max(1, Math.floor(a.poder / 3));
+    const hpB_max = Math.max(1, Math.floor(b.poder / 3));
+
+    let hpA = hpA_max;
+    let hpB = hpB_max;
+
+    const dmgA_base = a.poder * 0.025;
+    const dmgB_base = b.poder * 0.025;
+
+    const getDefensa = (pokemon) => {
+        const stats = POKEMON_POWER_DATA[pokemon];
+        if (!stats) return 0;
+        if (stats.label === "Evolución 1") return 0.10;
+        if (stats.label === "Evolución Final") return 0.20;
+        return 0;
+    };
+
+    const defA = getDefensa(a.pokemon);
+    const defB = getDefensa(b.pokemon);
+
+    duelState.actions = [];
+
+    // El primer estado inicial para UI
+    duelState.actions.push({ type: 'setup', hpA_max, hpB_max });
+
+    let round = 1;
+    while (hpA > 0 && hpB > 0 && round <= 20) {
+        // Ataque de A hacia B
+        const critA = 0.85 + Math.random() * 0.40;
+        let dmgA = Math.floor(dmgA_base * critA * (1 - defB));
+        if (dmgA < 1) dmgA = 1;
+
+        hpB -= dmgA;
+        if (hpB < 0) hpB = 0;
+
+        const ataquesA = POKEMON_ATAQUES[a.pokemon] || ["Placaje"];
+        const ataqueUsadoA = ataquesA[Math.floor(Math.random() * ataquesA.length)];
+
+        duelState.actions.push({
+            type: 'attack',
+            attacker: 'a',
+            target: 'b',
+            pokemonName: a.pokemon.toUpperCase(),
+            attackName: ataqueUsadoA,
+            dmg: dmgA,
+            hpAfter: hpB,
+            isCrit: critA > 1.18,
+            round: round
+        });
+
+        if (hpB <= 0) break;
+
+        // Ataque de B hacia A
+        const critB = 0.85 + Math.random() * 0.40;
+        let dmgB = Math.floor(dmgB_base * critB * (1 - defA));
+        if (dmgB < 1) dmgB = 1;
+
+        hpA -= dmgB;
+        if (hpA < 0) hpA = 0;
+
+        const ataquesB = POKEMON_ATAQUES[b.pokemon] || ["Placaje"];
+        const ataqueUsadoB = ataquesB[Math.floor(Math.random() * ataquesB.length)];
+
+        duelState.actions.push({
+            type: 'attack',
+            attacker: 'b',
+            target: 'a',
+            pokemonName: b.pokemon.toUpperCase(),
+            attackName: ataqueUsadoB,
+            dmg: dmgB,
+            hpAfter: hpA,
+            isCrit: critB > 1.18,
+            round: round
+        });
+
+        round++;
+    }
+
+    duelState.actions.push({
+        type: 'end',
+        hpA, hpB, hpA_max, hpB_max
+    });
+}
+
+function reproducirCombate(actions) {
+    let i = 0;
+    const msgBox = document.getElementById("battle-message-box");
+    const msgText = document.getElementById("battle-message-text");
+
+    const hpBarA = document.getElementById("duel-hp-a");
+    const hpBarB = document.getElementById("duel-hp-b");
+    const hpTextA = document.getElementById("duel-hp-text-a");
+    const hpTextB = document.getElementById("duel-hp-text-b");
+
+    let maxA = 1;
+    let maxB = 1;
+
+    duelState.timerId = setInterval(() => {
+        if (i >= actions.length) {
+            clearInterval(duelState.timerId);
+            msgBox.style.display = "none";
+            return;
+        }
+
+        const action = actions[i];
+
+        if (action.type === 'setup') {
+            maxA = action.hpA_max;
+            maxB = action.hpB_max;
+
+            hpBarA.style.width = "100%";
+            hpBarB.style.width = "100%";
+            hpTextA.innerText = `${maxA}/${maxA}`;
+            hpTextB.innerText = `${maxB}/${maxB}`;
+            i++;
+            return;
+        }
+
+        if (action.type === 'end') {
+            mostrarGanador(action);
+            msgBox.style.display = "none";
+            clearInterval(duelState.timerId);
+            return;
+        }
+
+        if (action.type === 'attack') {
+            // Mostrar el mensaje tipo GBA
+            msgBox.style.display = "block";
+            msgText.innerText = `¡${action.pokemonName} usó ${action.attackName.toUpperCase()}!`;
+
+            // Log de la terminal para historial
+            const logEl = document.getElementById("battle-log-content");
+            const containerLog = document.getElementById("battle-log");
+            logEl.innerHTML += `<p>> ${action.pokemonName} ataca a ${action.target.toUpperCase()} con ${action.attackName} (-${action.dmg} HP) ${action.isCrit ? '🔥 CRÍTICO' : ''}</p>`;
+            containerLog.scrollTop = containerLog.scrollHeight;
+
+            // Animación de Daño (Blanco + Floater)
+            animarGolpeBlanco(action.target, action.dmg, action.isCrit);
+
+            // Actualizar Barra de Vida del objetivo
+            const targetBar = action.target === 'a' ? hpBarA : hpBarB;
+            const targetText = action.target === 'a' ? hpTextA : hpTextB;
+            const maxHpTarget = action.target === 'a' ? maxA : maxB;
+
+            const pct = (action.hpAfter / maxHpTarget) * 100;
+
+            // Vibrar barra
+            targetBar.parentElement.classList.remove('hp-bar-shake');
+            void targetBar.parentElement.offsetWidth; // trigger reflow
+            targetBar.parentElement.classList.add('hp-bar-shake');
+
+            targetBar.style.width = `${pct}%`;
+            targetBar.style.backgroundColor = pct > 50 ? "#4ade80" : pct > 20 ? "#facc15" : "#ef4444";
+            targetText.innerText = `${action.hpAfter}/${maxHpTarget}`;
+
+            // Glow Rojo si HP <= 40%
+            const spriteDestino = document.getElementById(`duel-sprite-${action.target}`);
+            if (pct <= 40 && action.hpAfter > 0) {
+                spriteDestino.classList.add("low-hp-glow");
+            } else {
+                spriteDestino.classList.remove("low-hp-glow");
+            }
+
+            // Flash Crítico global
+            if (action.isCrit) {
+                const modal = document.querySelector(".battle-modal");
+                modal.style.boxShadow = "inset 0 0 100px rgba(255,255,255,0.8)";
+                setTimeout(() => modal.style.boxShadow = "", 150);
+            }
+        }
+
+        i++;
+    }, 1800); // 1.8s por sub-turno para poder leer el ataque
+}
+
+function animarGolpeBlanco(target, dmg, isCrit) {
+    const spriteContainer = document.getElementById(`sprite-container-${target}`);
+    const sprite = document.getElementById(`duel-sprite-${target}`);
+
+    // Flash Blanco
+    sprite.classList.remove("white-flash");
+    void sprite.offsetWidth;
+    sprite.classList.add("white-flash");
+
+    // Si es crítico sumamos el hit-glitch
+    if (isCrit) {
+        sprite.style.animation = 'none';
+        void sprite.offsetWidth;
+        sprite.style.animation = `hit-glitch 0.4s ease-out`;
+    }
+
+    // Damage Floater
+    const floater = document.createElement("div");
+    floater.className = "damage-floater";
+    if (isCrit) floater.classList.add("crit-floater");
+    floater.innerText = `-${dmg}`;
+
+    const x = Math.random() * 40 + 20;
+    const y = Math.random() * 40;
+    floater.style.left = `${x}%`;
+    floater.style.top = `${y}%`;
+
+    spriteContainer.appendChild(floater);
+
+    setTimeout(() => {
+        if (spriteContainer.contains(floater)) spriteContainer.removeChild(floater);
+    }, 1000);
+}
+
+function mostrarGanador(lastState) {
+    const winnerDiv = document.getElementById("duel-winner");
+    const textEl = document.getElementById("duel-winner-text");
+    const winnerSprite = document.getElementById("winner-sprite");
+
+    let winnerName = "";
+    let winnerPokemon = "";
+
+    if (lastState.hpA <= 0 && lastState.hpB <= 0) {
+        textEl.innerText = "EMPATE ÉPICO";
+        textEl.style.color = "var(--text-main)";
+        winnerSprite.style.display = "none";
+        document.getElementById("duel-sprite-a").classList.add("dead-sprite");
+        document.getElementById("duel-sprite-b").classList.add("dead-sprite");
+    } else if (lastState.hpA > lastState.hpB) {
+        winnerName = duelState.entrenadorA.nombre;
+        winnerPokemon = duelState.entrenadorA.pokemon;
+        textEl.innerText = `${winnerName.toUpperCase()}`;
+        winnerSprite.src = `https://play.pokemonshowdown.com/sprites/ani/${winnerPokemon}.gif`;
+        winnerSprite.style.display = "inline-block";
+        document.getElementById("duel-sprite-b").classList.add("dead-sprite");
+    } else {
+        winnerName = duelState.entrenadorB.nombre;
+        winnerPokemon = duelState.entrenadorB.pokemon;
+        textEl.innerText = `${winnerName.toUpperCase()}`;
+        winnerSprite.src = `https://play.pokemonshowdown.com/sprites/ani/${winnerPokemon}.gif`;
+        winnerSprite.style.display = "inline-block";
+        document.getElementById("duel-sprite-a").classList.add("dead-sprite");
+    }
+
+    winnerDiv.style.display = "flex";
+}
+
+
 
 async function eliminarTodos() {
     const confirmado = await mostrarModal("Borrar Todos", "🚨 ATENCIÓN 🚨\n¿Estás completamente seguro de que quieres borrar TODA la base de datos de entrenadores? Esta acción no se puede deshacer.");

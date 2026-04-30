@@ -187,6 +187,18 @@ POKEMON_POWER_DATA = {
     "dragonite": {"min": 7001, "max": 10000, "label": "Evolución Final"}
 }
 
+# Mapa Evolutivo para determinar la siguiente forma del Pokémon
+MAPA_EVOLUTIVO = {
+    "bulbasaur": "ivysaur",   "ivysaur": "venusaur",
+    "charmander": "charmeleon", "charmeleon": "charizard",
+    "squirtle": "wartortle",  "wartortle": "blastoise",
+    "pikachu": "raichu",
+    "eevee": "vaporeon",  # Por defecto en backend; UI enviará el específico si es posible
+    "zubat": "golbat",    "golbat": "crobat",
+    "gastly": "haunter",  "haunter": "gengar",
+    "dratini": "dragonair", "dragonair": "dragonite",
+}
+
 @app.post("/entrenadores")
 def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     # Lógica de poder basada en evolución (como definimos antes)
@@ -210,8 +222,8 @@ def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db)
         return nuevo_entrenador
     except IntegrityError:
         db.rollback()
-        # Aquí lanzamos el error amigable que leerá el frontend
-        raise HTTPException(status_code=400, detail="Entrenador ya registrado")
+        # Mensaje de error amigable y más temático/descriptivo
+        raise HTTPException(status_code=400, detail="Firma digital duplicada: Entrenador ya registrado")
 
 @app.put("/entrenadores/{entrenador_id}")
 def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
@@ -230,19 +242,89 @@ def actualizar_entrenador(entrenador_id: int, entrenador: EntrenadorSchema, db: 
     return db_entrenador
 
 @app.delete("/entrenadores/{entrenador_id}")
-def eliminar_entrenador_por_ID(entrenador_id: int, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
-    entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
+def eliminar_entrenador(entrenador_id: int, db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
+    db_entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
     
-    if not entrenador:
-        raise HTTPException(status_code=404, detail="No existe ese ID")
-
-    db.delete(entrenador)
+    if not db_entrenador:
+        raise HTTPException(status_code=404, detail="Entrenador no encontrado")
+    
+    db.delete(db_entrenador)
     db.commit()
-    return {
-        "mensaje": "Entrenador eliminado"
-    }
+    
+    return {"mensaje": f"Entrenador {db_entrenador.nombre} eliminado exitosamente."}
 
-@app.delete("/eliminar-todo") 
+# ==========================================
+# RUTAS LIBRES (No requieren token VIP)
+# ==========================================
+
+@app.put("/entrenadores/{entrenador_id}/entrenar")
+def entrenar_entrenador(entrenador_id: int, db: Session = Depends(get_db)):
+    db_entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
+    if not db_entrenador:
+        raise HTTPException(status_code=404, detail="Entrenador no encontrado")
+        
+    stats = POKEMON_POWER_DATA.get(db_entrenador.pokemon.lower())
+    if not stats:
+        raise HTTPException(status_code=400, detail="Datos del Pokémon no encontrados")
+        
+    if db_entrenador.poder_total >= stats["max"]:
+        raise HTTPException(status_code=400, detail="¡El Pokémon ha alcanzado su límite de poder en esta etapa! Necesita evolucionar.")
+        
+    # Incremento de entrenamiento entre +100 y +500
+    incremento = random.randint(100, 500)
+    nuevo_poder = min(db_entrenador.poder_total + incremento, stats["max"])
+    
+    db_entrenador.poder_total = nuevo_poder
+    db.commit()
+    db.refresh(db_entrenador)
+    
+    return {"mensaje": f"¡Entrenamiento exitoso! +{incremento} poder.", "entrenador": db_entrenador}
+
+class EvolucionRequest(BaseModel):
+    evolucion_forzada: Optional[str] = None
+
+@app.put("/entrenadores/{entrenador_id}/evolucionar")
+def evolucionar_entrenador(entrenador_id: int, req: EvolucionRequest = None, db: Session = Depends(get_db)):
+    db_entrenador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == entrenador_id).first()
+    if not db_entrenador:
+        raise HTTPException(status_code=404, detail="Entrenador no encontrado")
+        
+    pokemon_actual = db_entrenador.pokemon.lower()
+    
+    # Eevee es un caso especial porque tiene múltiples evoluciones que escoge el UI
+    if req and req.evolucion_forzada and pokemon_actual == "eevee":
+        nueva_especie = req.evolucion_forzada.lower()
+        if nueva_especie not in ["vaporeon", "jolteon", "flareon"]:
+            raise HTTPException(status_code=400, detail="Evolución de Eevee no válida")
+    else:
+        nueva_especie = MAPA_EVOLUTIVO.get(pokemon_actual)
+        
+    if not nueva_especie:
+        raise HTTPException(status_code=400, detail="¡Este Pokémon ya ha alcanzado su evolución final!")
+        
+    stats_actual = POKEMON_POWER_DATA.get(pokemon_actual)
+    
+    # Validar que tiene el nivel máximo para evolucionar
+    if db_entrenador.poder_total < stats_actual["max"]:
+        faltante = stats_actual["max"] - db_entrenador.poder_total
+        raise HTTPException(status_code=400, detail=f"Falta poder para evolucionar. Necesita {stats_actual['max']} de poder (faltan {faltante}). ¡Sigue entrenando!")
+        
+    stats_nuevo = POKEMON_POWER_DATA.get(nueva_especie)
+    
+    db_entrenador.pokemon = nueva_especie
+    db_entrenador.poder_total = stats_nuevo["min"]
+    db_entrenador.mensaje_medalla = f"Nivel de poder: {stats_nuevo['label']}"
+    
+    db.commit()
+    db.refresh(db_entrenador)
+    
+    return {"mensaje": f"¡Increíble! Tu Pokémon evolucionó a {nueva_especie.capitalize()}.", "entrenador": db_entrenador}
+
+# ==========================================
+# RUTAS ADMINISTRATIVAS
+# ==========================================
+
+@app.delete("/entrenadores/admin/borrar_todos") 
 def eliminar_todos_entrenadores(db: Session = Depends(get_db), usuario_actual: models.UsuarioDB = Depends(obtener_usuario_actual)):
     db.query(models.EntrenadorDB).delete()
     db.commit()
@@ -303,18 +385,31 @@ import random
 @app.post("/entrenadores/seed")
 def sembrar_entrenadores(db: Session = Depends(get_db)):
     ciudades = ["Pueblo Paleta", "Ciudad Verde", "Ciudad Plateada", "Ciudad Celeste"]
-    pokemones = ["pikachu", "charmander", "squirtle", "bulbasaur", "eevee", "zubat"]
+    basicos = [k for k, v in POKEMON_POWER_DATA.items() if v["label"] == "Básico"]
+    evolucionados = [k for k, v in POKEMON_POWER_DATA.items() if v["label"] != "Básico"]
     
     entrenadores_creados = []
     
-    for i in range(1, 21):
+    # Garantizar exactamente 10% evolucionados (2 de 20)
+    cantidad_total = 20
+    cantidad_evolucionados = int(cantidad_total * 0.10)
+    cantidad_basicos = cantidad_total - cantidad_evolucionados
+    
+    seleccionados = random.choices(evolucionados, k=cantidad_evolucionados) + random.choices(basicos, k=cantidad_basicos)
+    # No mezclamos (shuffle) para asegurar que los 2 evolucionados queden 
+    # de primeros en la base de datos y aparezcan INMEDIATAMENTE en la página 1.
+    
+    for pokemon_elegido in seleccionados:
+        stats = POKEMON_POWER_DATA[pokemon_elegido]
+        poder_calculado = random.randint(stats["min"], stats["max"])
+        
         nuevo_entrenador = models.EntrenadorDB(
             nombre=f"Entrenador de Prueba {random.randint(1000, 9999)}", # Nombre único
             ciudad=random.choice(ciudades),
-            pokemon=random.choice(pokemones),
+            pokemon=pokemon_elegido,
             medalla=random.choice([True, False]),
-            poder_total=random.randint(100, 5000),
-            mensaje_medalla="¡Generado automáticamente!"
+            poder_total=poder_calculado,
+            mensaje_medalla=f"Nivel de poder: {stats['label']}"
         )
         db.add(nuevo_entrenador)
         entrenadores_creados.append(nuevo_entrenador)

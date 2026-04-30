@@ -282,6 +282,110 @@
         </div>
     </div>
 
+    <!-- Modal para Evolución de Eevee -->
+    <div id="eevee-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="modal-title" style="color: var(--accent);">Evolución de Eevee</h3>
+            <p>Selecciona la piedra evolutiva:</p>
+            <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0;">
+                <button class="btn" style="background: #3b82f6; color: white;"
+                    onclick="confirmarEvolucionEevee('vaporeon')">💧 Vaporeon</button>
+                <button class="btn" style="background: #eab308; color: white;"
+                    onclick="confirmarEvolucionEevee('jolteon')">⚡ Jolteon</button>
+                <button class="btn" style="background: #ef4444; color: white;"
+                    onclick="confirmarEvolucionEevee('flareon')">🔥 Flareon</button>
+            </div>
+            <button class="btn btn-cancel" onclick="cerrarEeveeModal()">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- Modal para Selección de Rival -->
+    <div id="rival-modal" class="modal-overlay" style="z-index: 15000;">
+        <div class="modal-content" style="max-width: 600px; max-height: 80vh; display: flex; flex-direction: column;">
+            <h3 class="modal-title" style="color: var(--accent);">Selecciona a tu Oponente</h3>
+            <p style="margin-bottom: 10px; color: var(--text-muted);">Elige al entrenador contra el cual quieres
+                combatir:</p>
+
+            <input type="text" id="buscador-rival-modal" class="input-cyber"
+                placeholder="🔍 Buscar por nombre o Pokémon..." style="margin-bottom: 15px; width: 100%;">
+
+            <div id="lista-rivales"
+                style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-right: 10px;">
+                <!-- Aquí se inyectarán las opciones de rivales -->
+            </div>
+            <button class="btn btn-cancel" onclick="cerrarRivalModal()" style="align-self: center;">Cancelar
+                Duelo</button>
+        </div>
+    </div>
+
+    <!-- Modal de la Arena de Combate 3D -->
+    <div id="duel-modal" class="modal-overlay" style="z-index: 20000;">
+        <div class="modal-content battle-modal">
+            <button class="btn-close-duel" onclick="cerrarDuelo()">✖</button>
+            <h3 class="modal-title" style="color: var(--warning); margin-bottom: 5px;">⚔️ ARENA DE COMBATE</h3>
+
+            <div class="battle-arena">
+                <!-- Plataforma 3D -->
+                <div class="arena-floor"></div>
+
+                <!-- HUD Top -->
+                <div class="battle-hud">
+                    <div class="hud-box">
+                        <div class="hud-name" id="duel-name-a">Pokemon A</div>
+                        <div class="hud-hp-bar">
+                            <div class="hp-fill" id="duel-hp-a"></div>
+                        </div>
+                        <div class="hud-hp-text" id="duel-hp-text-a">100/100</div>
+                    </div>
+                    <div class="hud-box">
+                        <div class="hud-name" id="duel-name-b" style="text-align: right;">Pokemon B</div>
+                        <div class="hud-hp-bar" style="justify-content: flex-end;">
+                            <div class="hp-fill" id="duel-hp-b" style="transform-origin: right;"></div>
+                        </div>
+                        <div class="hud-hp-text" id="duel-hp-text-b" style="text-align: right;">100/100</div>
+                    </div>
+                </div>
+
+                <!-- Contenedores de Sprites 3D -->
+                <div class="sprite-container" id="sprite-container-a"
+                    style="left: 10%; bottom: 15%; width: 120px; height: 120px; z-index: 20;">
+                    <img id="duel-sprite-a" src="" alt="Pokemon A" class="battle-sprite sprite-a">
+                </div>
+                <div class="sprite-container" id="sprite-container-b"
+                    style="right: 15%; top: 25%; width: 100px; height: 100px; z-index: 10;">
+                    <img id="duel-sprite-b" src="" alt="Pokemon B" class="battle-sprite sprite-b">
+                </div>
+            </div>
+
+            <!-- Caja de Mensaje Estilo GBA (Inferior) -->
+            <div id="battle-message-box" style="display: none;">
+                <p id="battle-message-text"></p>
+            </div>
+
+            <!-- Terminal Log (Oculto por defecto o mantenido para debug) -->
+            <div class="battle-log" id="battle-log" style="display: none;">
+                <div id="battle-log-content"></div>
+            </div>
+
+            <!-- Overlay de Cuenta Regresiva -->
+            <div id="countdown-overlay" style="display: none;">
+                <h1 id="countdown-text">3</h1>
+            </div>
+
+            <!-- Overlay de Ganador Full Screen (Relativo a la arena) -->
+            <div class="duel-winner-overlay" id="duel-winner" style="display: none;">
+                <div class="winner-content">
+                    <h2 class="winner-title">🏆 ¡GANADOR! 🏆</h2>
+                    <img id="winner-sprite" src="" alt="Ganador">
+                    <h3 id="duel-winner-text" style="color: var(--warning); margin: 15px 0;"></h3>
+                    <button class="btn"
+                        style="background: var(--bg-card); color: white; border: 1px solid var(--warning);"
+                        onclick="cerrarDuelo()">Volver al Panel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="usual.js"></script>
     <script src="motor_canvas.js"></script>
 </body>
