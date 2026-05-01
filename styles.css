@@ -1244,7 +1244,7 @@ footer {
     color: #facc15;
     text-shadow: 0 0 30px #eab308, 0 0 10px #fff;
     margin: 0;
-    animation: countAnim 0.8s ease-in-out;
+    /* La animación se asignará dinámicamente por JS para evitar glitches */
 }
 
 @keyframes countAnim {
@@ -1259,6 +1259,28 @@ footer {
     }
 
     80% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+}
+
+@keyframes countAnimLong {
+    0% {
+        transform: scale(3);
+        opacity: 0;
+    }
+
+    10% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    85% {
         transform: scale(1);
         opacity: 1;
     }
@@ -1324,4 +1346,74 @@ footer {
     100% {
         transform: scale(1.05);
     }
+}
+
+/* ==========================================
+ * LEADERBOARD Y SCOUTER
+ * ========================================== */
+
+.leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.leaderboard-table th {
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--accent);
+    padding: 12px;
+    text-align: left;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--border);
+}
+
+.leaderboard-table td {
+    padding: 12px;
+    color: var(--text-main);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.leaderboard-table tr:hover td {
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.leaderboard-table tr:nth-child(1) td {
+    color: #facc15;
+    font-weight: bold;
+}
+
+.leaderboard-table tr:nth-child(2) td {
+    color: #e2e8f0;
+    font-weight: bold;
+}
+
+.leaderboard-table tr:nth-child(3) td {
+    color: #b45309;
+    font-weight: bold;
+}
+
+.btn-scouter {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1.1rem;
+}
+
+.btn-scouter:hover {
+    background: rgba(56, 189, 248, 0.2);
+    box-shadow: 0 0 10px var(--accent);
+    transform: scale(1.1);
 }

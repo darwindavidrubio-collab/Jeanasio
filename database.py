@@ -12,4 +12,4 @@ engine = create_engine(URL_DATABASE, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # La base que usaremos para crear las tablas
-Base = declarative_base()  
+Base = declarative_base()

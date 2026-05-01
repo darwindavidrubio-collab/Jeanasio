@@ -11,6 +11,12 @@ class EntrenadorDB(Base):
     poder_total = Column(Integer)
     mensaje_medalla = Column(String)
     pokemon = Column(String)
+    
+    # Nuevos campos competitivos
+    victorias = Column(Integer, default=0)
+    derrotas = Column(Integer, default=0)
+    xp = Column(Integer, default=0)
+    fecha_registro = Column(String, default="")
 
 class UsuarioDB(Base):
     __tablename__ = "usuarios"

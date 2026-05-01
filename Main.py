@@ -17,6 +17,30 @@ from database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
 
+# ==========================================
+# 0. MIGRACIÓN AUTOMÁTICA DE BASE DE DATOS
+# ==========================================
+from sqlalchemy import text
+
+def migrar_db():
+    columnas_nuevas = [
+        ("victorias", "INTEGER DEFAULT 0"),
+        ("derrotas", "INTEGER DEFAULT 0"),
+        ("xp", "INTEGER DEFAULT 0"),
+        ("fecha_registro", "VARCHAR DEFAULT ''")
+    ]
+    with engine.connect() as conn:
+        for col, tipo in columnas_nuevas:
+            try:
+                conn.execute(text(f"ALTER TABLE entrenadores ADD COLUMN {col} {tipo}"))
+                conn.commit()
+                print(f"Columna {col} añadida exitosamente.")
+            except Exception as e:
+                # Si falla (ej. la columna ya existe), ignoramos
+                pass
+
+migrar_db()
+
 app = FastAPI()
 
 # 2. CONFIGURACIÓN DE SEGURIDAD VIP
@@ -43,6 +67,13 @@ class EntrenadorSchema(BaseModel):
 class UsuarioCrear(BaseModel):
     username: str
     password: str
+
+class ResultadoCombateSchema(BaseModel):
+    id_ganador: Optional[int] = None
+    id_perdedor: Optional[int] = None
+    empate: Optional[bool] = False
+    id_a: Optional[int] = None
+    id_b: Optional[int] = None
 
 # 4. FUNCIONES DE APOYO Y SEGURIDAD
 def get_db():
@@ -206,13 +237,19 @@ def crear_entrenador(entrenador: EntrenadorSchema, db: Session = Depends(get_db)
     stats = POKEMON_POWER_DATA.get(pokemon_key, {"min": 10, "max": 10000, "label": "Desconocido"})
     poder_calculado = random.randint(stats["min"], stats["max"])
     
+    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     nuevo_entrenador = models.EntrenadorDB(
         nombre=entrenador.nombre, 
         ciudad=entrenador.ciudad, 
         medalla=entrenador.medalla,
         pokemon=entrenador.pokemon, 
         poder_total=poder_calculado,
-        mensaje_medalla=f"Nivel de poder: {stats['label']}"
+        mensaje_medalla=f"Nivel de poder: {stats['label']}",
+        victorias=0,
+        derrotas=0,
+        xp=0,
+        fecha_registro=fecha_actual
     )
     
     try:
@@ -319,6 +356,54 @@ def evolucionar_entrenador(entrenador_id: int, req: EvolucionRequest = None, db:
     db.refresh(db_entrenador)
     
     return {"mensaje": f"¡Increíble! Tu Pokémon evolucionó a {nueva_especie.capitalize()}.", "entrenador": db_entrenador}
+
+# ==========================================
+# RUTAS COMPETITIVAS (Leaderboard y Duelos)
+# ==========================================
+
+class ResultadoCombateSchema(BaseModel):
+    id_a: Optional[int] = None
+    id_b: Optional[int] = None
+    id_ganador: Optional[int] = None
+    id_perdedor: Optional[int] = None
+    empate: bool = False
+
+@app.put("/resultado-combate")
+def actualizar_resultado_combate(resultado: ResultadoCombateSchema, db: Session = Depends(get_db)):
+    if resultado.empate:
+        if resultado.id_a:
+            entrenador_a = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == resultado.id_a).first()
+            if entrenador_a:
+                entrenador_a.xp = (entrenador_a.xp or 0) + 50
+        if resultado.id_b:
+            entrenador_b = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == resultado.id_b).first()
+            if entrenador_b:
+                entrenador_b.xp = (entrenador_b.xp or 0) + 50
+    else:
+        if resultado.id_ganador:
+            ganador = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == resultado.id_ganador).first()
+            if ganador:
+                ganador.victorias = (ganador.victorias or 0) + 1
+                ganador.xp = (ganador.xp or 0) + 150
+                
+        if resultado.id_perdedor:
+            perdedor = db.query(models.EntrenadorDB).filter(models.EntrenadorDB.id == resultado.id_perdedor).first()
+            if perdedor:
+                perdedor.derrotas = (perdedor.derrotas or 0) + 1
+                perdedor.xp = (perdedor.xp or 0) + 30
+                
+    db.commit()
+    return {"mensaje": "Resultados de combate registrados exitosamente."}
+
+@app.get("/ranking")
+def obtener_ranking(db: Session = Depends(get_db)):
+    # Trae el Top 10 ordenado por victorias DESC, luego por XP DESC
+    top_entrenadores = db.query(models.EntrenadorDB).order_by(
+        models.EntrenadorDB.victorias.desc(), 
+        models.EntrenadorDB.xp.desc()
+    ).limit(10).all()
+    
+    return {"ranking": top_entrenadores}
 
 # ==========================================
 # RUTAS ADMINISTRATIVAS

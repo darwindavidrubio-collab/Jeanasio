@@ -256,21 +256,40 @@ function obtenerHeadersVIP() {
 }
 
 // ==========================================
-// 2. CONTROLES DE MÚSICA
+// 2. CONTROLES DE MÚSICA Y SFX
 // ==========================================
+
+const sfxBatalla = new Audio("Musica/batalla.mp3");
+sfxBatalla.loop = true;
+const sfx3 = new Audio("Musica/count3.mp3");
+const sfx2 = new Audio("Musica/count2.mp3");
+const sfx1 = new Audio("Musica/count1.mp3");
+const sfxGo = new Audio("Musica/countgo.mp3");
+
+const todosLosAudios = [sfxBatalla, sfx3, sfx2, sfx1, sfxGo];
 
 function cambiarVolumen(valor) {
     const audio = document.getElementById("musicaFondo");
     const btnMute = document.getElementById("btn-mute");
-    if (audio) {
-        audio.volume = valor;
-        if (valor == 0) {
-            btnMute.innerText = "🔇";
-            audio.muted = true;
+
+    if (audio) audio.volume = valor;
+    todosLosAudios.forEach(a => {
+        // Hacer que el GO suene un poco más fuerte (1.5x) sin exceder 1.0
+        if (a === sfxGo) {
+            a.volume = Math.min(valor * 1.5, 1.0);
         } else {
-            btnMute.innerText = "🔊";
-            audio.muted = false;
+            a.volume = valor;
         }
+    });
+
+    if (valor == 0) {
+        if (btnMute) btnMute.innerText = "🔇";
+        if (audio) audio.muted = true;
+        todosLosAudios.forEach(a => a.muted = true);
+    } else {
+        if (btnMute) btnMute.innerText = "🔊";
+        if (audio) audio.muted = false;
+        todosLosAudios.forEach(a => a.muted = false);
     }
 }
 
@@ -280,14 +299,17 @@ function mutearMusica() {
     const slider = document.getElementById("volumen-slider");
 
     if (!audio || !btnMute) return;
-    audio.muted = !audio.muted;
 
-    if (audio.muted) {
+    const nuevoMuted = !audio.muted;
+    audio.muted = nuevoMuted;
+    todosLosAudios.forEach(a => a.muted = nuevoMuted);
+
+    if (nuevoMuted) {
         btnMute.innerText = "🔇";
-        slider.value = 0;
+        if (slider) slider.value = 0;
     } else {
         btnMute.innerText = "🔊";
-        slider.value = audio.volume > 0 ? audio.volume : 0.5;
+        if (slider) slider.value = audio.volume > 0 ? audio.volume : 0.5;
     }
 }
 
@@ -347,7 +369,10 @@ async function cargarEntrenadores() {
                     <div style="display: flex; align-items: center; gap: 20px;">
                         <img src="${spriteAnimado}" alt="${nombrePokemon}" style="height: 60px; image-rendering: pixelated; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">
                         <div>
-                            <h3 style="margin: 0; color: var(--text-main); font-size: 1.2rem;">${e.nombre}</h3>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <h3 style="margin: 0; color: var(--text-main); font-size: 1.2rem;">${e.nombre}</h3>
+                                <button type="button" class="btn-scouter" onclick="abrirScouter('${e.nombre.replace(/'/g, "\\'")}', '${nombrePokemon}', ${poder}, ${e.victorias || 0}, ${e.derrotas || 0}, ${e.xp || 0}, '${e.fecha_registro || ''}')" title="Inspeccionar">🔬</button>
+                            </div>
                             <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: var(--text-muted);">
                                 🌍 ${e.ciudad} | <span class="badge ${e.medalla ? 'badge-campeon' : 'badge-novato'}">${e.medalla ? "🏅 Campeón" : "🎒 Novato"}</span>
                             </p>
@@ -570,6 +595,190 @@ async function ejecutarEvolucion(id, evolucionForzada) {
 }
 
 // ==========================================
+// ==========================================
+// SCOUTER Y LEADERBOARD
+// ==========================================
+
+function abrirLeaderboard() {
+    fetch(`${API_URL}/ranking`)
+        .then(res => {
+            if (!res.ok) throw new Error("Error en respuesta HTTP");
+            return res.json();
+        })
+        .then(data => {
+            const tbody = document.getElementById("leaderboard-body");
+            tbody.innerHTML = "";
+            if (!data.ranking || data.ranking.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Aún no hay entrenadores en el ranking.</td></tr>`;
+            } else {
+                data.ranking.forEach((e, idx) => {
+                    const pokemonName = (e.pokemon || "pikachu").toLowerCase();
+                    const icono = POKEMON_EMOJIS[pokemonName] || '🐾';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>#${idx + 1}</td>
+                            <td><strong>${e.nombre}</strong></td>
+                            <td>${icono} ${pokemonName.toUpperCase()}</td>
+                            <td style="color: #4ade80;">${e.victorias || 0}</td>
+                            <td style="color: #ef4444;">${e.derrotas || 0}</td>
+                            <td style="color: #facc15;">${e.xp || 0}</td>
+                        </tr>
+                    `;
+                });
+            }
+            document.getElementById("leaderboard-modal").classList.add("active");
+        })
+        .catch(err => {
+            console.error(err);
+            mostrarToast("Error cargando el ranking", "error");
+        });
+}
+
+function cerrarLeaderboard() {
+    document.getElementById("leaderboard-modal").classList.remove("active");
+}
+
+function abrirScouter(nombre, pokemon, poder, w, l, xp, fecha) {
+    document.getElementById("scouter-name").innerText = pokemon.toUpperCase();
+    document.getElementById("scouter-trainer").innerText = `Entrenador: ${nombre}`;
+    document.getElementById("scouter-w").innerText = w;
+    document.getElementById("scouter-l").innerText = l;
+    document.getElementById("scouter-xp").innerText = xp;
+
+    if (fecha) {
+        document.getElementById("scouter-date").innerText = `Registrado el: ${fecha}`;
+    } else {
+        document.getElementById("scouter-date").innerText = "Registrado el: Desconocido";
+    }
+
+    const sprite = document.getElementById("scouter-sprite");
+    sprite.src = `https://play.pokemonshowdown.com/sprites/ani/${pokemon.toLowerCase()}.gif`;
+
+    // Calcular stats (Max base reference = 4000)
+    const atk = (poder * 0.40);
+    const def = (poder * 0.35);
+    const vel = (poder * 0.25);
+
+    // Escala visual mínima (20%) para que los Pokémon básicos no se vean como un punto
+    const displayAtk = 0.2 + 0.8 * Math.min(atk / 4000, 1);
+    const displayDef = 0.2 + 0.8 * Math.min(def / 3500, 1);
+    const displayVel = 0.2 + 0.8 * Math.min(vel / 2500, 1);
+    const displayXp = 0.2 + 0.8 * Math.min(xp / 1000, 1);
+    const displayW = 0.2 + 0.8 * Math.min(w / 100, 1); // 100 victorias como tope visual
+
+    dibujarSpiderChart(displayAtk, displayDef, displayVel, displayW, displayXp);
+
+    document.getElementById("scouter-modal").classList.add("active");
+}
+
+function cerrarScouter() {
+    document.getElementById("scouter-modal").classList.remove("active");
+}
+
+function dibujarSpiderChart(atk, def, vel, w, xp) {
+    const canvas = document.getElementById("scouter-canvas");
+    const ctx = canvas.getContext("2d");
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const radius = 80;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Dibujar pentágonos de fondo
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.2)";
+    ctx.lineWidth = 1;
+    for (let j = 1; j <= 5; j++) {
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+            const r = (radius / 5) * j;
+            const x = cx + r * Math.cos(angle);
+            const y = cy + r * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+    }
+
+    // Ejes
+    const labels = ["Ataque", "Defensa", "Velocidad", "Experiencia", "Victorias"];
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.font = "10px Inter";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let i = 0; i < 5; i++) {
+        const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+        const x = cx + radius * Math.cos(angle);
+        const y = cy + radius * Math.sin(angle);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        // Labels
+        const lx = cx + (radius + 20) * Math.cos(angle);
+        const ly = cy + (radius + 15) * Math.sin(angle);
+        ctx.fillText(labels[i], lx, ly);
+    }
+
+    // Valores reales con escala mínima aplicada previamente
+    const values = [atk, def, vel, xp, w];
+
+    // Animación simple de llenado
+    let prog = 0;
+    const animar = setInterval(() => {
+        prog += 0.05;
+        if (prog >= 1) { prog = 1; clearInterval(animar); }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // limpiar redibuja todo, lo optimizo
+        // Se dibuja fondo de nuevo
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.2)";
+        for (let j = 1; j <= 5; j++) {
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+                const r = (radius / 5) * j;
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+        for (let i = 0; i < 5; i++) {
+            const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+            const x = cx + radius * Math.cos(angle);
+            const y = cy + radius * Math.sin(angle);
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+            const lx = cx + (radius + 20) * Math.cos(angle);
+            const ly = cy + (radius + 15) * Math.sin(angle);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.fillText(labels[i], lx, ly);
+        }
+
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+            const r = radius * values[i] * prog;
+            const x = cx + r * Math.cos(angle);
+            const y = cy + r * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "rgba(56, 189, 248, 0.5)";
+        ctx.fill();
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+    }, 20);
+}
+
+// ==========================================
 // MOTOR DE COMBATE 3D
 // ==========================================
 
@@ -742,6 +951,10 @@ function iniciarArena() {
     document.getElementById("duel-sprite-a").classList.remove("low-hp-glow");
     document.getElementById("duel-sprite-b").classList.remove("low-hp-glow");
 
+    // Pausar música principal
+    const audioPrincipal = document.getElementById("musicaFondo");
+    if (audioPrincipal) audioPrincipal.pause();
+
     simularCombate();
     iniciarCuentaRegresiva();
 }
@@ -755,34 +968,60 @@ function cerrarDuelo() {
     document.getElementById("duel-sprite-b").style.filter = "none";
     document.getElementById("duel-sprite-a").classList.remove("dead-sprite");
     document.getElementById("duel-sprite-b").classList.remove("dead-sprite");
+
+    // Detener música de batalla y reanudar fondo
+    sfxBatalla.pause();
+    sfxBatalla.currentTime = 0;
+    const audioPrincipal = document.getElementById("musicaFondo");
+    if (audioPrincipal && !audioPrincipal.muted) {
+        audioPrincipal.play().catch(e => console.log(e));
+    }
 }
 
-function iniciarCuentaRegresiva() {
+async function iniciarCuentaRegresiva() {
     const overlay = document.getElementById("countdown-overlay");
     const text = document.getElementById("countdown-text");
     overlay.style.display = "flex";
 
-    let count = 3;
-    text.innerText = count;
-
-    const countInterval = setInterval(() => {
-        count--;
-        if (count > 0) {
-            text.innerText = count;
-            text.style.animation = 'none';
-            text.offsetHeight;
-            text.style.animation = 'countAnim 0.8s ease-in-out';
-        } else if (count === 0) {
-            text.innerText = "¡COMBATE!";
-            text.style.animation = 'none';
-            text.offsetHeight;
-            text.style.animation = 'countAnim 0.8s ease-in-out';
-        } else {
-            clearInterval(countInterval);
-            overlay.style.display = "none";
-            reproducirCombate(duelState.actions);
+    const reproducirPaso = (texto, audio, animacion) => {
+        text.innerText = texto;
+        // Reiniciar la animación forzando un reflow
+        text.style.animation = 'none';
+        text.offsetHeight;
+        text.style.animation = animacion;
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log(e));
         }
-    }, 1000);
+    };
+
+    const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // 3
+    reproducirPaso("3", sfx3, 'countAnim 0.8s ease-in-out forwards');
+    await wait(1000);
+
+    // 2
+    reproducirPaso("2", sfx2, 'countAnim 0.8s ease-in-out forwards');
+    await wait(1000);
+
+    // 1
+    reproducirPaso("1", sfx1, 'countAnim 0.8s ease-in-out forwards');
+    await wait(1000);
+
+    // ¡COMBATE!
+    reproducirPaso("¡COMBATE!", sfxGo, 'countAnimLong 2.5s ease-in-out forwards');
+
+    // Iniciar el soundtrack épico
+    sfxBatalla.currentTime = 0;
+    sfxBatalla.play().catch(e => console.log(e));
+
+    // Esperar a que la voz termine de decir "GOOOO!" y la animación larga concluya (2.5 segundos)
+    await wait(2500);
+
+    // Arrancar la simulación visual de daño
+    overlay.style.display = "none";
+    reproducirCombate(duelState.actions);
 }
 
 function simularCombate() {
@@ -806,63 +1045,113 @@ function simularCombate() {
         return 0;
     };
 
+    const getEvasionMod = (pokemon) => {
+        const stats = POKEMON_POWER_DATA[pokemon];
+        if (!stats) return 1.0;
+        if (stats.label === "Básico") return 0.90;
+        if (stats.label === "Evolución 1") return 1.05;
+        if (stats.label === "Evolución Final") return 1.20;
+        return 1.0;
+    };
+
     const defA = getDefensa(a.pokemon);
     const defB = getDefensa(b.pokemon);
 
-    duelState.actions = [];
+    const evaA = getEvasionMod(a.pokemon);
+    const evaB = getEvasionMod(b.pokemon);
 
-    // El primer estado inicial para UI
+    duelState.actions = [];
     duelState.actions.push({ type: 'setup', hpA_max, hpB_max });
 
     let round = 1;
     while (hpA > 0 && hpB > 0 && round <= 20) {
-        // Ataque de A hacia B
-        const critA = 0.85 + Math.random() * 0.40;
-        let dmgA = Math.floor(dmgA_base * critA * (1 - defB));
-        if (dmgA < 1) dmgA = 1;
 
-        hpB -= dmgA;
-        if (hpB < 0) hpB = 0;
-
+        // --- TURNO DE A ---
         const ataquesA = POKEMON_ATAQUES[a.pokemon] || ["Placaje"];
         const ataqueUsadoA = ataquesA[Math.floor(Math.random() * ataquesA.length)];
 
-        duelState.actions.push({
-            type: 'attack',
-            attacker: 'a',
-            target: 'b',
-            pokemonName: a.pokemon.toUpperCase(),
-            attackName: ataqueUsadoA,
-            dmg: dmgA,
-            hpAfter: hpB,
-            isCrit: critA > 1.18,
-            round: round
-        });
+        // Fórmula de Evasión: Precision = 95 * (Mod_Prec(1.0) / Mod_Evas(defensor))
+        const precisionA = 95 * (1.0 / evaB);
+        const hitA = (Math.random() * 100) <= precisionA;
+
+        if (hitA) {
+            const critA = 0.85 + Math.random() * 0.40;
+            let dmgA = Math.floor(dmgA_base * critA * (1 - defB));
+            if (dmgA < 1) dmgA = 1;
+
+            hpB -= dmgA;
+            if (hpB < 0) hpB = 0;
+
+            duelState.actions.push({
+                type: 'attack',
+                attacker: 'a',
+                target: 'b',
+                pokemonName: a.pokemon.toUpperCase(),
+                attackName: ataqueUsadoA,
+                dmg: dmgA,
+                hpAfter: hpB,
+                isCrit: critA > 1.15,
+                missed: false,
+                round: round
+            });
+        } else {
+            duelState.actions.push({
+                type: 'attack',
+                attacker: 'a',
+                target: 'b',
+                pokemonName: a.pokemon.toUpperCase(),
+                attackName: ataqueUsadoA,
+                dmg: 0,
+                hpAfter: hpB,
+                isCrit: false,
+                missed: true,
+                round: round
+            });
+        }
 
         if (hpB <= 0) break;
 
-        // Ataque de B hacia A
-        const critB = 0.85 + Math.random() * 0.40;
-        let dmgB = Math.floor(dmgB_base * critB * (1 - defA));
-        if (dmgB < 1) dmgB = 1;
-
-        hpA -= dmgB;
-        if (hpA < 0) hpA = 0;
-
+        // --- TURNO DE B ---
         const ataquesB = POKEMON_ATAQUES[b.pokemon] || ["Placaje"];
         const ataqueUsadoB = ataquesB[Math.floor(Math.random() * ataquesB.length)];
 
-        duelState.actions.push({
-            type: 'attack',
-            attacker: 'b',
-            target: 'a',
-            pokemonName: b.pokemon.toUpperCase(),
-            attackName: ataqueUsadoB,
-            dmg: dmgB,
-            hpAfter: hpA,
-            isCrit: critB > 1.18,
-            round: round
-        });
+        const precisionB = 95 * (1.0 / evaA);
+        const hitB = (Math.random() * 100) <= precisionB;
+
+        if (hitB) {
+            const critB = 0.85 + Math.random() * 0.40;
+            let dmgB = Math.floor(dmgB_base * critB * (1 - defA));
+            if (dmgB < 1) dmgB = 1;
+
+            hpA -= dmgB;
+            if (hpA < 0) hpA = 0;
+
+            duelState.actions.push({
+                type: 'attack',
+                attacker: 'b',
+                target: 'a',
+                pokemonName: b.pokemon.toUpperCase(),
+                attackName: ataqueUsadoB,
+                dmg: dmgB,
+                hpAfter: hpA,
+                isCrit: critB > 1.15,
+                missed: false,
+                round: round
+            });
+        } else {
+            duelState.actions.push({
+                type: 'attack',
+                attacker: 'b',
+                target: 'a',
+                pokemonName: b.pokemon.toUpperCase(),
+                attackName: ataqueUsadoB,
+                dmg: 0,
+                hpAfter: hpA,
+                isCrit: false,
+                missed: true,
+                round: round
+            });
+        }
 
         round++;
     }
@@ -915,76 +1204,86 @@ function reproducirCombate(actions) {
         }
 
         if (action.type === 'attack') {
-            // Mostrar el mensaje tipo GBA
             msgBox.style.display = "block";
-            msgText.innerText = `¡${action.pokemonName} usó ${action.attackName.toUpperCase()}!`;
-
-            // Log de la terminal para historial
             const logEl = document.getElementById("battle-log-content");
             const containerLog = document.getElementById("battle-log");
-            logEl.innerHTML += `<p>> ${action.pokemonName} ataca a ${action.target.toUpperCase()} con ${action.attackName} (-${action.dmg} HP) ${action.isCrit ? '🔥 CRÍTICO' : ''}</p>`;
-            containerLog.scrollTop = containerLog.scrollHeight;
 
-            // Animación de Daño (Blanco + Floater)
-            animarGolpeBlanco(action.target, action.dmg, action.isCrit);
+            if (action.missed) {
+                msgText.innerText = `¡${action.pokemonName} usó ${action.attackName.toUpperCase()} pero falló!`;
+                logEl.innerHTML += `<p>> ${action.pokemonName} intentó usar ${action.attackName} pero ${action.target.toUpperCase()} lo ESQUIVÓ 💨</p>`;
 
-            // Actualizar Barra de Vida del objetivo
-            const targetBar = action.target === 'a' ? hpBarA : hpBarB;
-            const targetText = action.target === 'a' ? hpTextA : hpTextB;
-            const maxHpTarget = action.target === 'a' ? maxA : maxB;
-
-            const pct = (action.hpAfter / maxHpTarget) * 100;
-
-            // Vibrar barra
-            targetBar.parentElement.classList.remove('hp-bar-shake');
-            void targetBar.parentElement.offsetWidth; // trigger reflow
-            targetBar.parentElement.classList.add('hp-bar-shake');
-
-            targetBar.style.width = `${pct}%`;
-            targetBar.style.backgroundColor = pct > 50 ? "#4ade80" : pct > 20 ? "#facc15" : "#ef4444";
-            targetText.innerText = `${action.hpAfter}/${maxHpTarget}`;
-
-            // Glow Rojo si HP <= 40%
-            const spriteDestino = document.getElementById(`duel-sprite-${action.target}`);
-            if (pct <= 40 && action.hpAfter > 0) {
-                spriteDestino.classList.add("low-hp-glow");
+                animarGolpeBlanco(action.target, 0, false, true); // Animación DODGE!!
             } else {
-                spriteDestino.classList.remove("low-hp-glow");
-            }
+                msgText.innerText = `¡${action.pokemonName} usó ${action.attackName.toUpperCase()}!`;
+                logEl.innerHTML += `<p>> ${action.pokemonName} ataca a ${action.target.toUpperCase()} con ${action.attackName} (-${action.dmg} HP) ${action.isCrit ? '🔥 CRÍTICO' : ''}</p>`;
 
-            // Flash Crítico global
-            if (action.isCrit) {
-                const modal = document.querySelector(".battle-modal");
-                modal.style.boxShadow = "inset 0 0 100px rgba(255,255,255,0.8)";
-                setTimeout(() => modal.style.boxShadow = "", 150);
+                animarGolpeBlanco(action.target, action.dmg, action.isCrit);
+
+                const targetBar = action.target === 'a' ? hpBarA : hpBarB;
+                const targetText = action.target === 'a' ? hpTextA : hpTextB;
+                const maxHpTarget = action.target === 'a' ? maxA : maxB;
+
+                const pct = (action.hpAfter / maxHpTarget) * 100;
+
+                targetBar.parentElement.classList.remove('hp-bar-shake');
+                void targetBar.parentElement.offsetWidth;
+                targetBar.parentElement.classList.add('hp-bar-shake');
+
+                targetBar.style.width = `${pct}%`;
+                targetBar.style.backgroundColor = pct > 50 ? "#4ade80" : pct > 20 ? "#facc15" : "#ef4444";
+                targetText.innerText = `${action.hpAfter}/${maxHpTarget}`;
+
+                const spriteDestino = document.getElementById(`duel-sprite-${action.target}`);
+                if (pct <= 40 && action.hpAfter > 0) {
+                    spriteDestino.classList.add("low-hp-glow");
+                } else {
+                    spriteDestino.classList.remove("low-hp-glow");
+                }
+
+                if (action.isCrit) {
+                    const modal = document.querySelector(".battle-modal");
+                    modal.style.boxShadow = "inset 0 0 100px rgba(255,255,255,0.8)";
+                    setTimeout(() => modal.style.boxShadow = "", 150);
+                }
             }
+            containerLog.scrollTop = containerLog.scrollHeight;
         }
 
         i++;
     }, 1800); // 1.8s por sub-turno para poder leer el ataque
 }
 
-function animarGolpeBlanco(target, dmg, isCrit) {
+function animarGolpeBlanco(target, dmg, isCrit, isMiss = false) {
     const spriteContainer = document.getElementById(`sprite-container-${target}`);
     const sprite = document.getElementById(`duel-sprite-${target}`);
 
-    // Flash Blanco
-    sprite.classList.remove("white-flash");
-    void sprite.offsetWidth;
-    sprite.classList.add("white-flash");
-
-    // Si es crítico sumamos el hit-glitch
-    if (isCrit) {
-        sprite.style.animation = 'none';
+    if (!isMiss) {
+        // Flash Blanco
+        sprite.classList.remove("white-flash");
         void sprite.offsetWidth;
-        sprite.style.animation = `hit-glitch 0.4s ease-out`;
+        sprite.classList.add("white-flash");
+
+        // Si es crítico sumamos el hit-glitch
+        if (isCrit) {
+            sprite.style.animation = 'none';
+            void sprite.offsetWidth;
+            sprite.style.animation = `hit-glitch 0.4s ease-out`;
+        }
     }
 
     // Damage Floater
     const floater = document.createElement("div");
     floater.className = "damage-floater";
-    if (isCrit) floater.classList.add("crit-floater");
-    floater.innerText = `-${dmg}`;
+
+    if (isMiss) {
+        floater.innerText = "DODGE!!";
+        floater.style.color = "#38bdf8"; // Cyan
+        floater.style.textShadow = "0 0 5px #38bdf8";
+        floater.style.fontSize = "1.5rem";
+    } else {
+        if (isCrit) floater.classList.add("crit-floater");
+        floater.innerText = `-${dmg}`;
+    }
 
     const x = Math.random() * 40 + 20;
     const y = Math.random() * 40;
@@ -1005,6 +1304,7 @@ function mostrarGanador(lastState) {
 
     let winnerName = "";
     let winnerPokemon = "";
+    let resultPayload = {};
 
     if (lastState.hpA <= 0 && lastState.hpB <= 0) {
         textEl.innerText = "EMPATE ÉPICO";
@@ -1012,6 +1312,12 @@ function mostrarGanador(lastState) {
         winnerSprite.style.display = "none";
         document.getElementById("duel-sprite-a").classList.add("dead-sprite");
         document.getElementById("duel-sprite-b").classList.add("dead-sprite");
+
+        resultPayload = {
+            empate: true,
+            id_a: duelState.entrenadorA.id,
+            id_b: duelState.entrenadorB.id
+        };
     } else if (lastState.hpA > lastState.hpB) {
         winnerName = duelState.entrenadorA.nombre;
         winnerPokemon = duelState.entrenadorA.pokemon;
@@ -1019,6 +1325,12 @@ function mostrarGanador(lastState) {
         winnerSprite.src = `https://play.pokemonshowdown.com/sprites/ani/${winnerPokemon}.gif`;
         winnerSprite.style.display = "inline-block";
         document.getElementById("duel-sprite-b").classList.add("dead-sprite");
+
+        resultPayload = {
+            id_ganador: duelState.entrenadorA.id,
+            id_perdedor: duelState.entrenadorB.id,
+            empate: false
+        };
     } else {
         winnerName = duelState.entrenadorB.nombre;
         winnerPokemon = duelState.entrenadorB.pokemon;
@@ -1026,9 +1338,24 @@ function mostrarGanador(lastState) {
         winnerSprite.src = `https://play.pokemonshowdown.com/sprites/ani/${winnerPokemon}.gif`;
         winnerSprite.style.display = "inline-block";
         document.getElementById("duel-sprite-a").classList.add("dead-sprite");
+
+        resultPayload = {
+            id_ganador: duelState.entrenadorB.id,
+            id_perdedor: duelState.entrenadorA.id,
+            empate: false
+        };
     }
 
     winnerDiv.style.display = "flex";
+
+    // Sincronizar con Backend silenciosamente
+    fetch(`${API_URL}/resultado-combate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resultPayload)
+    }).then(() => {
+        cargarEntrenadores(); // Refrescar base de datos silenciosamente en la interfaz
+    }).catch(e => console.error("Error al registrar resultado", e));
 }
 
 

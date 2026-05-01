@@ -24,6 +24,13 @@
 
             <div class="header-right" id="header-actions"
                 style="display: none; text-align: right; align-items: center; gap: 15px; justify-content: flex-end;">
+
+                <button class="btn"
+                    style="background: linear-gradient(135deg, #d97706, #b45309); color: white; font-weight: bold; border: 2px solid #fbd38d; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.5);"
+                    onclick="abrirLeaderboard()">
+                    🏆 Leaderboard
+                </button>
+
                 <div
                     style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.4); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--border);">
                     <button id="btn-mute" class="btn" onclick="mutearMusica()" aria-label="Silenciar música"
@@ -383,6 +390,75 @@
                         onclick="cerrarDuelo()">Volver al Panel</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal de Leaderboard -->
+    <div id="leaderboard-modal" class="modal-overlay" style="z-index: 14000;">
+        <div class="modal-content" style="max-width: 700px; max-height: 85vh; display: flex; flex-direction: column;">
+            <h3 class="modal-title"
+                style="color: var(--warning); text-align: center; text-shadow: 0 0 10px var(--warning);">🏆 LEADERBOARD
+                MUNDIAL 🏆</h3>
+            <p style="text-align: center; color: var(--text-muted); margin-bottom: 15px;">Los 10 Entrenadores más
+                fuertes del gimnasio</p>
+            <div style="overflow-y: auto; flex: 1;">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Entrenador</th>
+                            <th>Pokémon</th>
+                            <th>Victorias</th>
+                            <th>Derrotas</th>
+                            <th>XP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Rankings aquí -->
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-cancel" onclick="cerrarLeaderboard()"
+                style="margin-top: 20px; align-self: center;">Cerrar Ranking</button>
+        </div>
+    </div>
+
+    <!-- Modal Scouter (Inspección) -->
+    <div id="scouter-modal" class="modal-overlay" style="z-index: 14500;">
+        <div class="modal-content"
+            style="max-width: 500px; text-align: center; border-color: var(--accent); box-shadow: 0 0 30px rgba(56, 189, 248, 0.3);">
+            <h3 class="modal-title" style="color: var(--accent); letter-spacing: 2px;">🔬 SCOUTER HOLOGRÁFICO</h3>
+
+            <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
+                <img id="scouter-sprite" src="" alt="Pokemon"
+                    style="height: 120px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.5)); image-rendering: pixelated;">
+            </div>
+
+            <h4 id="scouter-name" style="color: var(--text-main); font-size: 1.5rem; margin: 0 0 5px 0;"></h4>
+            <p id="scouter-trainer" style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 20px 0;"></p>
+
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 20px;">
+                <span class="badge"
+                    style="background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid #4ade80;">Victorias:
+                    <span id="scouter-w">0</span></span>
+                <span class="badge"
+                    style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444;">Derrotas:
+                    <span id="scouter-l">0</span></span>
+                <span class="badge"
+                    style="background: rgba(250, 204, 21, 0.2); color: #facc15; border: 1px solid #facc15;">XP: <span
+                        id="scouter-xp">0</span></span>
+            </div>
+
+            <!-- Spider Chart Canvas -->
+            <div
+                style="position: relative; width: 100%; height: 250px; display: flex; justify-content: center; align-items: center;">
+                <canvas id="scouter-canvas" width="250" height="250" style="background: transparent;"></canvas>
+            </div>
+
+            <p id="scouter-date" style="font-size: 0.75rem; color: var(--text-muted); margin: 15px 0 0 0;"></p>
+
+            <button class="btn btn-cancel" onclick="cerrarScouter()" style="margin-top: 20px;">Cerrar
+                Analizador</button>
         </div>
     </div>
 
